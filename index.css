@@ -1,0 +1,37 @@
+body {
+  background-color: #0f172a; /* Cor de fundo principal (slate-900) */
+  color: #e2e8f0; /* Cor de texto principal (slate-200) */
+}
+.card {
+  background-color: #1e293b; /* Cor dos cards (slate-800) */
+  border: 1px solid #334155; /* Cor da borda dos cards (slate-700) */
+}
+.table {
+  --bs-table-bg: #1e293b; /* Fundo da tabela */
+  --bs-table-border-color: #334155; /* Cor da borda da tabela */
+  --bs-table-striped-bg: #33415533; /* Fundo da linha zebrada */
+}
+.form-control, .form-select, .modal-content {
+  background-color: #334155; /* Cor de fundo dos inputs (slate-700) */
+  border-color: #475569; /* Cor da borda dos inputs (slate-600) */
+  color: #e2e8f0;
+}
+.form-control:focus, .form-select:focus {
+  background-color: #334155;
+  border-color: #06b6d4; /* Cor do foco (cyan-500) */
+  box-shadow: 0 0 0 0.25rem rgba(6, 182, 212, 0.25);
+  color: #e2e8f0;
+}
+ .btn-cyan {
+  background-color: #0891b2; /* Cor base do botão (cyan-600) */
+  border-color: #0891b2;
+  color: #fff;
+}
+.btn-cyan:hover {
+  background-color: #06b6d4; /* Cor do hover (cyan-500) */
+  border-color: #06b6d4;
+  color: #fff;
+}
+.modal-content {
+  background-color: #1e293b;
+}
