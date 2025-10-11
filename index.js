@@ -70,6 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 5000);
   };
 
+    // Map server-side error messages to user-friendly text
+    const friendlyError = (serverMsg) => {
+        if (!serverMsg) return 'Ocorreu um erro. Tente novamente.';
+        const msg = serverMsg.toString().toLowerCase();
+        if (msg.includes('invalid file type')) return 'Formato de arquivo inválido. Use JPG, PNG ou PDF.';
+        if (msg.includes('file too large') || msg.includes('request entity too large') || msg.includes('payload too large') || msg.includes('exceeded')) return 'Arquivo muito grande. O limite é 1 MB.';
+        if (msg.includes('password')) return 'Senha incorreta.';
+        return serverMsg;
+    };
+
   /**
    * Retorna a data de hoje no formato YYYY-MM-DD.
    */
@@ -281,11 +291,33 @@ document.addEventListener('DOMContentLoaded', () => {
             body: form
         }).then(async res => {
             if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || 'Erro ao enviar ao servidor');
+                // Prefer JSON { error: 'msg' } but fall back to plain text
+                let serverMessage = `Erro ao enviar (HTTP ${res.status})`;
+                try {
+                    const data = await res.json();
+                    if (data && data.error) serverMessage = data.error;
+                    else if (typeof data === 'string') serverMessage = data;
+                } catch (e) {
+                    try {
+                        const txt = await res.text();
+                        if (txt) serverMessage = txt;
+                    } catch (e2) { /* noop */ }
+                }
+                // Show server-provided message to the user
+                showAnnouncement(serverMessage, 'danger');
+
+                // Do NOT fallback to localStorage for client errors (4xx) such as invalid file type or too large.
+                if (res.status >= 400 && res.status < 500) {
+                    // Keep form as-is so user can correct file/inputs.
+                    return null;
+                }
+
+                // For server errors (5xx) treat as transient and throw to trigger fallback below
+                throw new Error(serverMessage);
             }
             return res.json();
         }).then(created => {
+            if (!created) return; // handled earlier (client error)
             // Server returns the created appointment metadata (id, comprovantePath, status...)
             appointments.push(created);
             saveData();
@@ -298,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(err => {
             // Network/server error: fallback to localStorage (previous behavior)
             console.warn('Falha ao enviar para o servidor, salvando localmente:', err);
+            showAnnouncement(`Servidor indisponível: ${err.message || 'Tente novamente mais tarde.'}`, 'warning');
             if (file) {
                 const reader = new FileReader();
                 reader.onload = () => {
