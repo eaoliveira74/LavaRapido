@@ -598,6 +598,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ensure default date
     if (statsDate) statsDate.value = getTodayString();
 
+    // Restore last used CEP from localStorage
+    const STATS_LAST_CEP_KEY = 'statsLastCep_v1';
+    try {
+        const lastCep = localStorage.getItem(STATS_LAST_CEP_KEY);
+        const cepInputEl = document.getElementById('stats-cep');
+        if (lastCep && cepInputEl) cepInputEl.value = lastCep;
+    } catch (e) { /* ignore */ }
+
     // Initialize stats view: load Chart.js if needed and draw
     async function initializeStats() {
         // load Chart.js from CDN if not present
@@ -887,7 +895,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // wire refresh
-        if (statsRefresh) statsRefresh.addEventListener('click', () => renderStats());
+        if (statsRefresh) statsRefresh.addEventListener('click', async () => {
+            // save CEP when user refreshes stats
+            try { const cepEl = document.getElementById('stats-cep'); if (cepEl && cepEl.value) localStorage.setItem(STATS_LAST_CEP_KEY, cepEl.value); } catch (e) {}
+            await renderStats();
+        });
+        // save last CEP on change
+        const cepInputEl = document.getElementById('stats-cep');
+        if (cepInputEl) cepInputEl.addEventListener('change', () => { try { localStorage.setItem(STATS_LAST_CEP_KEY, cepInputEl.value); } catch (e) {} });
         // CSV export
         const statsExportBtn = document.getElementById('stats-export');
         if (statsExportBtn) statsExportBtn.addEventListener('click', () => {
