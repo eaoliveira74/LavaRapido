@@ -76,6 +76,12 @@ body {
 }
 .slot .slot-label { font-size: 0.95rem; }
 
+/* Ensure slot text is black even when parent rules force white in client view */
+#client-view #available-times-grid .slot,
+#client-view #available-times-grid .slot .slot-label {
+  color: #000000 !important;
+}
+
 /* Regra mais específica e abrangente para garantir branco em textos do cliente */
 #client-view p,
 #client-view small,
