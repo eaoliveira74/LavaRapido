@@ -129,6 +129,18 @@ app.get('/api/appointments', requireAdmin, (req, res) => {
   res.json(appointments);
 });
 
+// Public appointments listing (non-sensitive fields) - useful for clients to show availability
+app.get('/api/appointments/public', (req, res) => {
+  try {
+    const appointments = readAppointments();
+    // return limited fields to avoid exposing potentially sensitive data
+    const publicList = appointments.map(a => ({ id: a.id, nomeCliente: a.nomeCliente, servicoId: a.servicoId, data: a.data, horario: a.horario, status: a.status }));
+    res.json(publicList);
+  } catch (e) {
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
 // Download/view comprovante file (admin)
 // Return file as attachment; route is protected
 app.get('/api/appointments/:id/comprovante', requireAdmin, (req, res) => {

@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else localStorage.removeItem('adminToken');
     };
     let serverAppointments = null;
+    let publicAppointments = null;
 
 
   // --- 2. REFERÊNCIAS AOS ELEMENTOS DO DOM ---
@@ -178,6 +179,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showAnnouncement('Não foi possível conectar ao servidor para listar agendamentos.','warning');
         }
     };
+
+    // Fetch public appointments (no auth) so admin on desktop can see server-saved appointments made from mobile
+    const fetchPublicAppointments = async () => {
+        try {
+            const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+            const res = await fetch(`${backend}/api/appointments/public`);
+            if (!res.ok) {
+                publicAppointments = null;
+                return;
+            }
+            publicAppointments = await res.json();
+            renderAppointmentsTable();
+        } catch (e) {
+            publicAppointments = null;
+        }
+    };
   
   const populateServiceSelect = () => {
     serviceSelect.innerHTML = '<option value="">Selecione um serviço</option>';
@@ -225,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const renderAppointmentsTable = () => {
       appointmentsTableBody.innerHTML = '';
-      const list = (adminToken && serverAppointments) ? serverAppointments : appointments;
+      const list = (adminToken && serverAppointments) ? serverAppointments : (publicAppointments ? publicAppointments : appointments);
       if (!list || list.length === 0) {
           appointmentsTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-secondary">Nenhum agendamento encontrado.</td></tr>';
           return;
