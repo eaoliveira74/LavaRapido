@@ -72,6 +72,10 @@ body {
 .weather-card .temp { font-size:1.1rem; font-weight:700; }
 .weather-card .cond { font-size:0.85rem; color:#475569; }
 .a11y-high-contrast .weather-card { background:#000 !important; color:#fff !important; }
+/* toolbar weather controls */
+#weather-clear-cache, #weather-test-conn { background:#000; color:#fff; border-color:transparent; }
+.weather-card .icon svg { width:36px; height:36px; }
+.day-icon svg { width:24px; height:24px; }
 .table {
   --bs-table-bg: #1e293b; /* Fundo da tabela */
   --bs-table-border-color: #334155; /* Cor da borda da tabela */

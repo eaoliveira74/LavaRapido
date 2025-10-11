@@ -1264,6 +1264,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // no reduced-motion listener (control removed)
             if (elReset) elReset.addEventListener('click', () => { writeA11y(a11yDefaults); applyA11y(a11yDefaults); showAnnouncement('Preferências de acessibilidade restauradas.','success'); });
 
+            // Weather toolbar controls
+            const weatherClearBtn = document.getElementById('weather-clear-cache');
+            const weatherTestBtn = document.getElementById('weather-test-conn');
+            if (weatherClearBtn) weatherClearBtn.addEventListener('click', () => {
+                try { localStorage.removeItem('weatherCache_v1'); showAnnouncement('Cache meteorológico limpo.','success'); } catch (e) { showAnnouncement('Falha ao limpar cache.','danger'); }
+            });
+            if (weatherTestBtn) weatherTestBtn.addEventListener('click', async () => {
+                try {
+                    showAnnouncement('Testando serviço meteorológico...','info');
+                    const test = await fetchVisualWeather(-23.55, -46.63, getTodayString(), getTodayString());
+                    if (test && test.days) showAnnouncement('Serviço meteorológico acessível.','success');
+                    else showAnnouncement('Serviço meteorológico indisponível (fallback).','warning');
+                } catch (e) { showAnnouncement('Erro ao testar serviço meteorológico.','danger'); }
+            });
+
             // Floating toggle and keyboard shortcut (Alt+M)
             const toggleToolbar = () => {
                 const toolbar = document.getElementById('a11y-toolbar');
