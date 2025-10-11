@@ -17,7 +17,8 @@ body {
   border-color: #444 !important;
 }
 .a11y-large-text {
-  font-size: 1.125rem !important; /* 18px-ish */
+  /* increase base font-size by 20% for accessibility */
+  font-size: 1.2em !important; /* 120% */
 }
 /* Reduced motion: remove animations/transitions */
 .a11y-reduced-motion *, .a11y-reduced-motion *::before, .a11y-reduced-motion *::after {
