@@ -95,12 +95,14 @@
                 </form>
               </div>
             </div>
-            <!-- Lista de agendamentos do cliente com opção de envio de comprovante -->
+            <!-- Upload de comprovante: o cliente pode enviar comprovante ao agendar -->
             <div class="card mt-4">
               <div class="card-body">
-                <h3 class="h5">Meus Agendamentos</h3>
-                <div id="client-appointments-list">
-                  <!-- Linhas de agendamento do cliente serão injetadas aqui -->
+                <h3 class="h5">Comprovante de Pagamento</h3>
+                <p class="text-secondary small">Se desejar reservar imediatamente, anexe o comprovante junto com o agendamento.</p>
+                <div class="mt-3">
+                  <label for="comprovante" class="form-label">Anexar Comprovante (imagem ou PDF):</label>
+                  <input type="file" id="comprovante" accept="image/*,application/pdf" class="form-control">
                 </div>
               </div>
             </div>
