@@ -213,3 +213,9 @@ body {
 #admin-view .btn-outline-success {
   color: #ffffff !important;
 }
+
+/* Strong override: ensure services list remains readable even against broad admin rules */
+#admin-view #services-list { background: #ffffff !important; border-radius: 6px; }
+#admin-view #services-list .list-group-item { background: #ffffff !important; color: #0b1220 !important; border: 1px solid rgba(0,0,0,0.06) !important; }
+#admin-view #services-list .list-group-item, #admin-view #services-list .list-group-item * { color: #0b1220 !important; }
+#admin-view #services-list .list-group-item .btn { color: #0b1220 !important; border-color: rgba(11,18,32,0.12) !important; }
