@@ -47,3 +47,13 @@ body {
 #client-view .card .card-body small {
   color: #f8fafc !important;
 }
+
+/* Regra mais específica e abrangente para garantir branco em textos do cliente */
+#client-view p,
+#client-view small,
+#client-view span,
+#client-view li,
+#client-view .text-secondary {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
