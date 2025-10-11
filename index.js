@@ -264,27 +264,64 @@ document.addEventListener('DOMContentLoaded', () => {
             status: 'Pendente'
         };
 
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const newAppointment = { ...baseData, comprovanteDataUrl: reader.result, status: 'Reservado' };
-                appointments.push(newAppointment);
-                saveData();
-                showAnnouncement(`Agendamento para ${newAppointment.nomeCliente} realizado e reservado (comprovante anexado).`);
-                appointmentForm.reset();
-                comprovanteInput.value = '';
-                completionTimeAlert.classList.add('d-none');
-                updateAvailableTimes();
-            };
-            reader.readAsDataURL(file);
-        } else {
-            appointments.push(baseData);
+        // Always attempt to send to backend first (multipart/form-data). If the server is unavailable, fall back to localStorage.
+        const form = new FormData();
+        form.append('nomeCliente', baseData.nomeCliente);
+        form.append('telefoneCliente', baseData.telefoneCliente);
+        form.append('servicoId', baseData.servicoId);
+        form.append('data', baseData.data);
+        form.append('horario', baseData.horario);
+        form.append('observacoes', baseData.observacoes || '');
+        if (file) form.append('comprovante', file, file.name);
+
+        const backendUrl = (window.__BACKEND_URL__ || 'http://localhost:4000') + '/api/appointments';
+
+        fetch(backendUrl, {
+            method: 'POST',
+            body: form
+        }).then(async res => {
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || 'Erro ao enviar ao servidor');
+            }
+            return res.json();
+        }).then(created => {
+            // Server returns the created appointment metadata (id, comprovantePath, status...)
+            appointments.push(created);
             saveData();
-            showAnnouncement(`Agendamento para ${baseData.nomeCliente} realizado com sucesso!`);
+            showAnnouncement(`Agendamento para ${created.nomeCliente} realizado com sucesso (enviado ao servidor).`);
             appointmentForm.reset();
+            comprovanteInput.value = '';
             completionTimeAlert.classList.add('d-none');
             updateAvailableTimes();
-        }
+            renderAppointmentsTable();
+        }).catch(err => {
+            // Network/server error: fallback to localStorage (previous behavior)
+            console.warn('Falha ao enviar para o servidor, salvando localmente:', err);
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const newAppointment = { ...baseData, comprovanteDataUrl: reader.result, status: 'Reservado' };
+                    appointments.push(newAppointment);
+                    saveData();
+                    showAnnouncement(`Agendamento salvo localmente (servidor indisponível).`,'warning');
+                    appointmentForm.reset();
+                    comprovanteInput.value = '';
+                    completionTimeAlert.classList.add('d-none');
+                    updateAvailableTimes();
+                    renderAppointmentsTable();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                appointments.push(baseData);
+                saveData();
+                showAnnouncement(`Agendamento salvo localmente (servidor indisponível).`,'warning');
+                appointmentForm.reset();
+                completionTimeAlert.classList.add('d-none');
+                updateAvailableTimes();
+                renderAppointmentsTable();
+            }
+        });
   });
   
   appointmentsTableBody.addEventListener('click', (e) => {
