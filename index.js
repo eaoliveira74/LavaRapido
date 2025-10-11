@@ -17,6 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const AVAILABLE_TIMES = ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00"];
   // Variável para guardar o agendamento a ser notificado
   let currentNotificationAppointment = null;
+    // Admin auth token (JWT) for protected API calls
+    let adminToken = localStorage.getItem('adminToken') || null;
+    const setAdminToken = (t) => {
+        adminToken = t;
+        if (t) localStorage.setItem('adminToken', t);
+        else localStorage.removeItem('adminToken');
+    };
+    let serverAppointments = null;
 
 
   // --- 2. REFERÊNCIAS AOS ELEMENTOS DO DOM ---
@@ -121,6 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   const renderAdminView = (activeTab = 'appointments') => {
+      // If we have a token, try fetching server-side appointments
+      if (adminToken) fetchAdminAppointments().catch(() => {});
       renderAppointmentsTable();
       renderServicesList();
       document.getElementById('admin-appointments-section').classList.toggle('d-none', activeTab !== 'appointments');
@@ -130,6 +140,26 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('show-services-btn').classList.toggle('btn-cyan', activeTab === 'services');
       document.getElementById('show-services-btn').classList.toggle('btn-secondary', activeTab !== 'services');
   };
+
+    // Fetch appointments from backend (requires adminToken)
+    const fetchAdminAppointments = async () => {
+        const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+        if (!adminToken) return;
+        try {
+            const res = await fetch(`${backend}/api/appointments`, { headers: { Authorization: `Bearer ${adminToken}` } });
+            if (!res.ok) {
+                serverAppointments = null;
+                const txt = await res.text().catch(()=>'');
+                showAnnouncement(`Falha ao carregar agendamentos: ${txt || res.status}`,'danger');
+                return;
+            }
+            serverAppointments = await res.json();
+            renderAppointmentsTable();
+        } catch (err) {
+            serverAppointments = null;
+            showAnnouncement('Não foi possível conectar ao servidor para listar agendamentos.','warning');
+        }
+    };
   
   const populateServiceSelect = () => {
     serviceSelect.innerHTML = '<option value="">Selecione um serviço</option>';
@@ -167,11 +197,12 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const renderAppointmentsTable = () => {
       appointmentsTableBody.innerHTML = '';
-      if (appointments.length === 0) {
+      const list = (adminToken && serverAppointments) ? serverAppointments : appointments;
+      if (!list || list.length === 0) {
           appointmentsTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-secondary">Nenhum agendamento encontrado.</td></tr>';
           return;
       }
-      const sortedAppointments = [...appointments].sort((a,b) => new Date(a.data).getTime() - new Date(b.data).getTime() || a.horario.localeCompare(b.horario));
+      const sortedAppointments = [...list].sort((a,b) => new Date(a.data).getTime() - new Date(b.data).getTime() || (a.horario||'').localeCompare(b.horario||''));
       sortedAppointments.forEach(app => {
           const service = services.find(s => s.id === app.servicoId);
           const statusColors = {
@@ -189,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${app.observacoes || 'Nenhuma'}</td>
               <td class="${statusColors[app.status] || ''}">${app.status}</td>
               <td>
-                  ${app.comprovanteDataUrl ? `<button class="btn btn-sm btn-outline-info me-1" data-action="view-proof" data-id="${app.id}">Ver Comprovante</button>` : ''}
+                  ${(app.comprovanteDataUrl || app.comprovantePath) ? `<button class="btn btn-sm btn-outline-info me-1" data-action="view-proof" data-id="${app.id}">Ver Comprovante</button>` : ''}
                   <div class="d-inline-flex flex-wrap gap-1">
                       <button class="btn btn-sm btn-info" data-action="notify" data-id="${app.id}">Notificar</button>
                       <button class="btn btn-sm ${app.status === 'Concluído' ? 'btn-success' : 'btn-outline-success'}" data-action="complete" data-id="${app.id}">Concluído</button>
@@ -357,15 +388,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
   });
   
-  appointmentsTableBody.addEventListener('click', (e) => {
+  appointmentsTableBody.addEventListener('click', async (e) => {
       const target = e.target;
       const action = target.dataset.action;
-      const id = parseInt(target.dataset.id);
+      const id = target.dataset.id;
       if (!action) return;
-      const app = appointments.find(a => a.id === id);
+      const list = (adminToken && serverAppointments) ? serverAppointments : appointments;
+      const app = list.find(a => String(a.id) === String(id));
 
       if (action === 'view-proof') {
-          if (app && app.comprovanteDataUrl) window.open(app.comprovanteDataUrl, '_blank');
+          // If server-backed and comprovaPath exists, fetch the file via protected endpoint
+          if (adminToken && app && app.comprovantePath) {
+              try {
+                  const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+                  const res = await fetch(`${backend}/api/appointments/${id}/comprovante`, { headers: { Authorization: `Bearer ${adminToken}` } });
+                  if (!res.ok) { showAnnouncement('Falha ao baixar comprovante.','danger'); return; }
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  window.open(url, '_blank');
+                  // release after some time
+                  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+              } catch (err) {
+                  showAnnouncement('Erro ao baixar comprovante.','danger');
+              }
+          } else if (app && app.comprovanteDataUrl) {
+              window.open(app.comprovanteDataUrl, '_blank');
+          }
       } else if (action === 'notify') {
           // Guarda o agendamento atual e prepara a mensagem padrão
           currentNotificationAppointment = app;
@@ -378,24 +426,53 @@ document.addEventListener('DOMContentLoaded', () => {
           whatsAppModal.show();
 
       } else if (action === 'complete') {
-          app.status = 'Concluído';
-          showAnnouncement('Agendamento marcado como Concluído.');
+          if (adminToken && app && app.id) {
+              // mark locally for serverless entries, or call server to update if desired
+              app.status = 'Concluído';
+              showAnnouncement('Agendamento marcado como Concluído.');
+          } else if (app) {
+              app.status = 'Concluído';
+              showAnnouncement('Agendamento marcado como Concluído.');
+          }
       } else if (action === 'keep') {
-          // manter/confirmar agendamento (admin)
-          app.status = 'Confirmado';
-          showAnnouncement('Agendamento mantido/confirmado.');
+          if (adminToken) {
+              // call confirm endpoint
+              try {
+                  const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+                  const res = await fetch(`${backend}/api/appointments/${id}/confirm`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
+                  if (!res.ok) { showAnnouncement('Falha ao confirmar agendamento.','danger'); return; }
+                  showAnnouncement('Agendamento confirmado no servidor.');
+                  await fetchAdminAppointments();
+              } catch (err) {
+                  showAnnouncement('Erro ao confirmar agendamento.','danger');
+              }
+          } else if (app) {
+              app.status = 'Confirmado';
+              showAnnouncement('Agendamento mantido/confirmado.');
+          }
       } else if (action === 'pendent') {
-          app.status = 'Pendente';
-          showAnnouncement('Agendamento marcado como Pendente.');
+          if (app) { app.status = 'Pendente'; showAnnouncement('Agendamento marcado como Pendente.'); }
       } else if (action === 'delete') {
           if (confirm(`Tem certeza que deseja excluir o agendamento de ${app.nomeCliente}?`)) {
-              appointments = appointments.filter(a => a.id !== id);
-              showAnnouncement('Agendamento excluído com sucesso.', 'danger');
+              if (adminToken) {
+                  try {
+                      const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+                      const res = await fetch(`${backend}/api/appointments/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminToken}` } });
+                      if (!res.ok) { showAnnouncement('Falha ao excluir agendamento no servidor.','danger'); return; }
+                      showAnnouncement('Agendamento excluído no servidor.','success');
+                      await fetchAdminAppointments();
+                  } catch (err) {
+                      showAnnouncement('Erro ao excluir agendamento.','danger');
+                  }
+              } else {
+                  appointments = appointments.filter(a => a.id !== id);
+                  showAnnouncement('Agendamento excluído com sucesso.', 'danger');
+              }
           }
       }
       saveData();
       renderAppointmentsTable();
-      renderClientAppointments();
+      try { renderClientAppointments(); } catch(e) { /* ignored (function removed earlier) */ }
   });
   
   /**
@@ -502,21 +579,40 @@ document.addEventListener('DOMContentLoaded', () => {
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
-  // Evento do botão de submissão do modal de senha
-  document.getElementById('admin-password-submit').addEventListener('click', async () => {
-      const input = document.getElementById('admin-password-input').value || '';
-      const feedback = document.getElementById('admin-password-feedback');
-      const adminPasswordModalEl = document.getElementById('admin-password-modal');
-      const adminPasswordModal = bootstrap.Modal.getInstance(adminPasswordModalEl);
-      const hashed = await sha256Hex(input);
-      if (hashed === ADMIN_PASSWORD_HASH) {
-          // senha correta
-          feedback.classList.add('d-none');
-          adminPasswordModal.hide();
-          switchView('admin');
-      } else {
-          // senha incorreta
-          feedback.classList.remove('d-none');
-      }
-  });
+    // Evento do botão de submissão do modal de senha
+    document.getElementById('admin-password-submit').addEventListener('click', async () => {
+            const input = document.getElementById('admin-password-input').value || '';
+            const feedback = document.getElementById('admin-password-feedback');
+            feedback.classList.add('d-none');
+            const adminPasswordModalEl = document.getElementById('admin-password-modal');
+            const adminPasswordModal = bootstrap.Modal.getInstance(adminPasswordModalEl);
+
+            // Try backend login first
+            const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+            try {
+                const res = await fetch(`${backend}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: input }) });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.token) {
+                        setAdminToken(data.token);
+                        adminPasswordModal.hide();
+                        switchView('admin');
+                        return;
+                    }
+                }
+            } catch (err) {
+                // fallback to local check below
+                console.warn('Backend auth failed, falling back to local check', err);
+            }
+
+            // Fallback: local hash check (for offline/demo)
+            const hashed = await sha256Hex(input);
+            if (hashed === ADMIN_PASSWORD_HASH) {
+                    feedback.classList.add('d-none');
+                    adminPasswordModal.hide();
+                    switchView('admin');
+            } else {
+                    feedback.classList.remove('d-none');
+            }
+    });
 });
