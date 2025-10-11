@@ -720,14 +720,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) return null;
             const j = await res.json();
             if (j.erro) return null;
-            // ViaCEP returns uf/localidade/bairro but not coordinates. Try several geocoding queries (most specific first).
-            const candidates = [];
-            const parts = [ (j.localidade || '').trim(), (j.uf || '').trim(), (j.bairro || '').trim(), cleaned ];
-            // build a few candidate queries
-            if (parts[0] && parts[1] && parts[2]) candidates.push(`${parts[0]} ${parts[2]} ${parts[1]}`);
-            if (parts[0] && parts[1]) candidates.push(`${parts[0]} ${parts[1]}`);
-            if (parts[2] && parts[1]) candidates.push(`${parts[2]} ${parts[1]}`);
-            candidates.push(cleaned);
+            // ViaCEP returns logradouro, bairro, localidade and uf. Build richer candidate queries (most specific first)
+            const candidatesSet = new Set();
+            const logradouro = (j.logradouro || '').trim();
+            const bairro = (j.bairro || '').trim();
+            const localidade = (j.localidade || '').trim();
+            const uf = (j.uf || '').trim();
+            // Full address variants
+            if (logradouro && bairro && localidade && uf) candidatesSet.add(`${logradouro} ${bairro} ${localidade} ${uf}`);
+            if (logradouro && localidade && uf) candidatesSet.add(`${logradouro} ${localidade} ${uf}`);
+            if (bairro && localidade && uf) candidatesSet.add(`${bairro} ${localidade} ${uf}`);
+            if (logradouro && uf) candidatesSet.add(`${logradouro} ${uf}`);
+            if (localidade && uf) candidatesSet.add(`${localidade} ${uf}`);
+            // Try with Brasil appended for broader geocoding
+            if (localidade && uf) candidatesSet.add(`${localidade} ${uf} Brasil`);
+            if (logradouro && bairro && localidade && uf) candidatesSet.add(`${logradouro} ${bairro} ${localidade} ${uf} Brasil`);
+            // Try CEP itself
+            candidatesSet.add(cleaned);
+            // Turn into array and keep order
+            const candidates = Array.from(candidatesSet);
             for (const cand of candidates) {
                 const q = encodeURIComponent(cand);
                 const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=1&language=pt`;
