@@ -211,8 +211,16 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // --- 5. EVENT LISTENERS (INTERAÇÕES DO USUÁRIO) ---
 
-  document.getElementById('select-client-role').addEventListener('click', () => switchView('client'));
-  document.getElementById('select-admin-role').addEventListener('click', () => switchView('admin'));
+    document.getElementById('select-client-role').addEventListener('click', () => switchView('client'));
+    // Quando o usuário clicar em 'Sou Administrador' iremos abrir um modal solicitando a senha
+    document.getElementById('select-admin-role').addEventListener('click', () => {
+            // mostra o modal de senha (Bootstrap Modal)
+            const adminPasswordModalEl = document.getElementById('admin-password-modal');
+            const adminPasswordModal = new bootstrap.Modal(adminPasswordModalEl);
+            document.getElementById('admin-password-input').value = '';
+            document.getElementById('admin-password-feedback').classList.add('d-none');
+            adminPasswordModal.show();
+    });
   logoutButton.addEventListener('click', () => switchView(null));
   document.getElementById('show-appointments-btn').addEventListener('click', () => renderAdminView('appointments'));
   document.getElementById('show-services-btn').addEventListener('click', () => renderAdminView('services'));
@@ -378,4 +386,38 @@ document.addEventListener('DOMContentLoaded', () => {
   datePicker.value = getTodayString();
   datePicker.min = getTodayString();
   switchView(null); // Começa na tela de seleção de perfil
+
+  // --- 7. LÓGICA DE AUTENTICAÇÃO SIMPLES (SENHA ADMIN LOCAL) ---
+  // Nota: a senha é verificada localmente usando hash; isso é suficiente para uso local, mas
+  // não é seguro para produção porque o hash e a lógica ficam no cliente.
+
+  // Hash SHA-256 da senha 'admin@2025' gerado durante a sessão de desenvolvimento
+  const ADMIN_PASSWORD_HASH = 'e7ec9cbf3dc1a42562a5e500d5768001933624ea8d8f3ea0602092c42d4bc857';
+
+  // Calcula SHA-256 de uma string no browser e retorna hex string
+  const sha256Hex = async (str) => {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // Evento do botão de submissão do modal de senha
+  document.getElementById('admin-password-submit').addEventListener('click', async () => {
+      const input = document.getElementById('admin-password-input').value || '';
+      const feedback = document.getElementById('admin-password-feedback');
+      const adminPasswordModalEl = document.getElementById('admin-password-modal');
+      const adminPasswordModal = bootstrap.Modal.getInstance(adminPasswordModalEl);
+      const hashed = await sha256Hex(input);
+      if (hashed === ADMIN_PASSWORD_HASH) {
+          // senha correta
+          feedback.classList.add('d-none');
+          adminPasswordModal.hide();
+          switchView('admin');
+      } else {
+          // senha incorreta
+          feedback.classList.remove('d-none');
+      }
+  });
 });
