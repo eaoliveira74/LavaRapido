@@ -960,8 +960,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dt = new Date(lbl + 'T00:00:00');
                 return isNaN(dt.getTime()) ? refDate : dt.toISOString().split('T')[0];
             };
-            start = toISO(data.labels[0]);
-            end = toISO(data.labels[data.labels.length - 1]);
+            // For most ranges, convert the first/last label to ISO dates.
+            // Special-case the 'year' range because labels are month names (e.g., 'jan', 'fev')
+            if (range === 'year') {
+                // Use the reference date's year and query the full year
+                const year = new Date(refDate + 'T00:00:00').getFullYear();
+                start = `${year}-01-01`;
+                end = `${year}-12-31`;
+            } else {
+                start = toISO(data.labels[0]);
+                end = toISO(data.labels[data.labels.length - 1]);
+            }
         }
         // resolve CEP input to lat/lon if provided
         // resolve CEP input to lat/lon if provided, using cache when possible
