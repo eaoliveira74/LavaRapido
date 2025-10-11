@@ -1079,6 +1079,31 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Erro ao buscar weather:', err);
         }
 
+        // Compute and display percentage breakdown for weather conditions in the stats view
+        try {
+            if (weather && weather.length) {
+                const totalDays = weather.length;
+                const counts = { Ensolarado: 0, Nublado: 0, Chuvoso: 0, Indeterminado: 0 };
+                weather.forEach(d => {
+                    const raw = (d.conditionSimple || d.label || d.conditions || '').toString().toLowerCase();
+                    if (raw.includes('ensolar') || raw.includes('sun') || raw.includes('clear')) counts.Ensolarado++;
+                    else if (raw.includes('nublado') || raw.includes('cloud')) counts.Nublado++;
+                    else if (raw.includes('chuv') || raw.includes('rain') || raw.includes('storm') || raw.includes('showers')) counts.Chuvoso++;
+                    else counts.Indeterminado++;
+                });
+                const percent = (n) => (totalDays === 0 ? 0 : Math.round((n * 1000) / totalDays) / 10); // one decimal
+                // build HTML summary
+                const parts = [];
+                parts.push(`<div class="me-3">${ICON_SUN} <strong>Ensolarado</strong> ${percent(counts.Ensolarado)}% (${counts.Ensolarado}/${totalDays})</div>`);
+                parts.push(`<div class="me-3">${ICON_CLOUD} <strong>Nublado</strong> ${percent(counts.Nublado)}% (${counts.Nublado}/${totalDays})</div>`);
+                parts.push(`<div class="me-3">${ICON_RAIN} <strong>Chuvoso</strong> ${percent(counts.Chuvoso)}% (${counts.Chuvoso}/${totalDays})</div>`);
+                if (counts.Indeterminado > 0) parts.push(`<div class="me-3">❓ <strong>Indeterminado</strong> ${percent(counts.Indeterminado)}% (${counts.Indeterminado}/${totalDays})</div>`);
+                if (statsWeatherEl) statsWeatherEl.innerHTML = `<div class="small text-secondary">Distribuição meteorológica (${totalDays} dias):</div><div class="mt-1 d-flex flex-wrap gap-2">${parts.join('')}</div>`;
+            }
+        } catch (e) {
+            console.warn('Failed to compute weather percentages', e);
+        }
+
         // If we have Visual Crossing data, also populate the home header with today's weather
         try {
             const homeEl = document.getElementById('home-weather');
