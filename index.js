@@ -14,7 +14,18 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'lavagem-motor', nome: 'Lavagem do Motor', preco: 30.00, duration: 45 }
   ];
   let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
-  const AVAILABLE_TIMES = ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00"];
+    // default available times are generated every 30 minutes between 08:00 and 17:00
+    const AVAILABLE_TIMES = [];
+    const genTimes = () => {
+        const start = 8 * 60; // in minutes
+        const end = 17 * 60; // inclusive end hour
+        for (let m = start; m <= end; m += 30) {
+            const hh = Math.floor(m / 60).toString().padStart(2, '0');
+            const mm = (m % 60).toString().padStart(2, '0');
+            AVAILABLE_TIMES.push(`${hh}:${mm}`);
+        }
+    };
+    genTimes();
   // Variável para guardar o agendamento a ser notificado
   let currentNotificationAppointment = null;
     // Admin auth token (JWT) for protected API calls
@@ -182,10 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
       timeSelect.innerHTML = '<option value="">Selecione um horário</option>';
       AVAILABLE_TIMES.forEach(time => {
           const isBooked = bookedSlots.has(time);
-          const timeDiv = document.createElement('div');
-          timeDiv.className = `p-2 rounded text-center small ${isBooked ? 'bg-danger-subtle text-danger-emphasis' : 'bg-success-subtle text-success-emphasis'}`;
-          timeDiv.innerHTML = `<span class="fw-bold">${time}</span><br>${isBooked ? 'Ocupado' : 'Disponível'}`;
-          availableTimesGrid.appendChild(timeDiv);
+          const slot = document.createElement('div');
+          slot.className = `slot p-2 rounded text-center small ${isBooked ? 'reserved' : 'free'}`;
+          slot.dataset.time = time;
+          slot.innerHTML = `<div class="slot-label fw-bold">${time}</div>`;
+          availableTimesGrid.appendChild(slot);
+          // also populate the select with only free slots
           if (!isBooked) {
               const option = document.createElement('option');
               option.value = time;
@@ -193,6 +206,14 @@ document.addEventListener('DOMContentLoaded', () => {
               timeSelect.appendChild(option);
           }
       });
+      // Make slots clickable to select time
+      availableTimesGrid.querySelectorAll('.slot').forEach(s => s.addEventListener('click', () => {
+          const t = s.dataset.time;
+          if (timeSelect.querySelector(`option[value="${t}"]`)) {
+              timeSelect.value = t;
+              timeSelect.dispatchEvent(new Event('change'));
+          }
+      }));
   };
   
   const renderAppointmentsTable = () => {

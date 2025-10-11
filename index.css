@@ -48,6 +48,34 @@ body {
   color: #f8fafc !important;
 }
 
+/* Slots grid for available times */
+#available-times-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+.slot {
+  border-radius: 6px;
+  padding: 8px 6px;
+  cursor: pointer;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.04) inset;
+}
+.slot.free {
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.slot.reserved {
+  background: #cfe8ff; /* light blue */
+  color: #000000;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.slot .slot-label { font-size: 0.95rem; }
+
 /* Regra mais específica e abrangente para garantir branco em textos do cliente */
 #client-view p,
 #client-view small,
