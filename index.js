@@ -915,72 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Debug helper: try geocoding candidates and show the attempts + first successful match and a short weather sample
-    async function debugResolveCep() {
-        const cepInput = document.getElementById('stats-cep');
-        const cepFeedback = document.getElementById('stats-cep-feedback');
-        if (!cepInput || !cepInput.value) { showAnnouncement('Informe um CEP antes de testar.','warning'); return; }
-        const cleanedCep = cepInput.value.replace(/\D/g,'');
-        const attempts = [];
-        try {
-            const url = `https://viacep.com.br/ws/${cleanedCep}/json/`;
-            const res = await fetch(url);
-            const j = await res.json();
-            if (j.erro) { showAnnouncement('ViaCEP não encontrou o CEP.','warning'); return; }
-            // build same candidates as resolveCepToLatLon
-            const logradouro = (j.logradouro || '').trim();
-            const bairro = (j.bairro || '').trim();
-            const localidade = (j.localidade || '').trim();
-            const uf = (j.uf || '').trim();
-            const candidates = [];
-            if (logradouro && bairro && localidade && uf) candidates.push(`${logradouro} ${bairro} ${localidade} ${uf}`);
-            if (logradouro && localidade && uf) candidates.push(`${logradouro} ${localidade} ${uf}`);
-            if (bairro && localidade && uf) candidates.push(`${bairro} ${localidade} ${uf}`);
-            if (logradouro && uf) candidates.push(`${logradouro} ${uf}`);
-            if (localidade && uf) candidates.push(`${localidade} ${uf}`);
-            if (localidade && uf) candidates.push(`${localidade} ${uf} Brasil`);
-            if (logradouro && bairro && localidade && uf) candidates.push(`${logradouro} ${bairro} ${localidade} ${uf} Brasil`);
-            candidates.push(cleanedCep);
-            let matched = null;
-            for (const cand of candidates) {
-                try {
-                    const q = encodeURIComponent(cand);
-                    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=1&language=pt`;
-                    const gres = await fetch(geoUrl);
-                    const gj = await gres.json();
-                    attempts.push({ candidate: cand, ok: !!(gj.results && gj.results[0]) });
-                    if (gj.results && gj.results[0]) { matched = { candidate: cand, lat: gj.results[0].latitude, lon: gj.results[0].longitude }; break; }
-                } catch (e) {
-                    attempts.push({ candidate: cand, ok: false, error: e.message });
-                }
-            }
-            if (!matched) {
-                // try nominatim
-                const nomq = encodeURIComponent(`${localidade || ''} ${uf || ''} Brasil`.trim());
-                const nomUrl = `https://nominatim.openstreetmap.org/search.php?q=${nomq}&format=jsonv2&limit=1`;
-                const nres = await fetch(nomUrl, { headers: { 'User-Agent': 'LavaRapido-Debug/1.0' } });
-                const nj = await nres.json();
-                if (nj && nj[0]) { matched = { candidate: nomq, lat: parseFloat(nj[0].lat), lon: parseFloat(nj[0].lon), provider: 'nominatim' }; }
-                attempts.push({ candidate: nomq, ok: !!(nj && nj[0]), provider: 'nominatim' });
-            }
-            // show attempts in the UI
-            const list = attempts.map(a => `${a.ok ? '✓' : '✗'} ${a.candidate}${a.provider ? ' ('+a.provider+')' : ''}`).join(' | ');
-            if (matched) {
-                const sample = await fetchWeatherSummary(getTodayString(), getTodayString(), matched.lat, matched.lon);
-                const sampleLabel = (sample && sample[0]) ? (sample[0].label + ' ' + (sample[0].icon || '')) : 'sem amostra';
-                const out = `Tentativas: ${list} → Encontrado: ${matched.candidate} (${matched.lat.toFixed(6)},${matched.lon.toFixed(6)}) — Amostra: ${sampleLabel}`;
-                statsWeatherEl.textContent = out;
-            } else {
-                statsWeatherEl.textContent = `Tentativas: ${list} — Nenhum resultado encontrado.`;
-            }
-        } catch (e) {
-            showAnnouncement('Erro ao testar CEP: '+(e.message||e),'danger');
-        }
-    }
-
-    // wire debug button
-    const statsDebugBtn = document.getElementById('stats-debug');
-    if (statsDebugBtn) statsDebugBtn.addEventListener('click', () => debugResolveCep());
+    // (debugResolveCep removed) — production build: no debug button wired
 
     // wire refresh
         if (statsRefresh) statsRefresh.addEventListener('click', async () => {
