@@ -146,10 +146,17 @@ document.addEventListener('DOMContentLoaded', () => {
       renderServicesList();
       document.getElementById('admin-appointments-section').classList.toggle('d-none', activeTab !== 'appointments');
       document.getElementById('admin-services-section').classList.toggle('d-none', activeTab !== 'services');
+            document.getElementById('admin-stats-section').classList.toggle('d-none', activeTab !== 'stats');
       document.getElementById('show-appointments-btn').classList.toggle('btn-cyan', activeTab === 'appointments');
       document.getElementById('show-appointments-btn').classList.toggle('btn-secondary', activeTab !== 'appointments');
       document.getElementById('show-services-btn').classList.toggle('btn-cyan', activeTab === 'services');
       document.getElementById('show-services-btn').classList.toggle('btn-secondary', activeTab !== 'services');
+            const showStatsBtn = document.getElementById('show-stats-btn');
+            if (showStatsBtn) {
+                showStatsBtn.classList.toggle('btn-cyan', activeTab === 'stats');
+                showStatsBtn.classList.toggle('btn-outline-light', activeTab !== 'stats');
+            }
+            if (activeTab === 'stats') initializeStats();
   };
 
     // Fetch appointments from backend (requires adminToken)
@@ -289,6 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
   logoutButton.addEventListener('click', () => switchView(null));
   document.getElementById('show-appointments-btn').addEventListener('click', () => renderAdminView('appointments'));
   document.getElementById('show-services-btn').addEventListener('click', () => renderAdminView('services'));
+    const showStatsBtn = document.getElementById('show-stats-btn');
+    if (showStatsBtn) showStatsBtn.addEventListener('click', () => renderAdminView('stats'));
   datePicker.addEventListener('change', updateAvailableTimes);
   
   [serviceSelect, timeSelect].forEach(el => {
@@ -334,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.append('data', baseData.data);
         form.append('horario', baseData.horario);
         form.append('observacoes', baseData.observacoes || '');
-        if (file) form.append('comprovante', file, file.name);
+    if (file) form.append('comprovante', file, file.name);
 
         const backendUrl = (window.__BACKEND_URL__ || 'http://localhost:4000') + '/api/appointments';
 
@@ -371,11 +380,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }).then(created => {
             if (!created) return; // handled earlier (client error)
             // Server returns the created appointment metadata (id, comprovantePath, status...)
+            // If server returned comprovantePath, normalize to use that; otherwise fallback to data URL
+            if (created.comprovantePath) created.comprovantePath = created.comprovantePath.replace(/\\/g, '/');
             appointments.push(created);
             saveData();
             showAnnouncement(`Agendamento para ${created.nomeCliente} realizado com sucesso (enviado ao servidor).`);
             appointmentForm.reset();
             comprovanteInput.value = '';
+            // clear comprovante status UI
+            const compStatusEl = document.getElementById('comprovante-status');
+            if (compStatusEl) compStatusEl.textContent = '';
             completionTimeAlert.classList.add('d-none');
             updateAvailableTimes();
             renderAppointmentsTable();
@@ -386,12 +400,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (file) {
                 const reader = new FileReader();
                 reader.onload = () => {
-                    const newAppointment = { ...baseData, comprovanteDataUrl: reader.result, status: 'Reservado' };
+                    const newAppointment = { ...baseData, comprovanteDataUrl: reader.result, status: 'Reservado', comprovantePath: null };
                     appointments.push(newAppointment);
                     saveData();
                     showAnnouncement(`Agendamento salvo localmente (servidor indisponível).`,'warning');
                     appointmentForm.reset();
                     comprovanteInput.value = '';
+                    const compStatusEl = document.getElementById('comprovante-status');
+                    if (compStatusEl) compStatusEl.textContent = '(anexado localmente)';
                     completionTimeAlert.classList.add('d-none');
                     updateAvailableTimes();
                     renderAppointmentsTable();
@@ -402,12 +418,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveData();
                 showAnnouncement(`Agendamento salvo localmente (servidor indisponível).`,'warning');
                 appointmentForm.reset();
+                const compStatusEl = document.getElementById('comprovante-status');
+                if (compStatusEl) compStatusEl.textContent = '';
                 completionTimeAlert.classList.add('d-none');
                 updateAvailableTimes();
                 renderAppointmentsTable();
             }
         });
   });
+
+  // show selected file name and basic status next to the file input
+  const comprobanteInputEl = document.getElementById('comprovante');
+  if (comprobanteInputEl) {
+      comprobanteInputEl.addEventListener('change', () => {
+          const statusEl = document.getElementById('comprovante-status');
+          const f = comprobanteInputEl.files && comprobanteInputEl.files[0];
+          if (!statusEl) return;
+          if (f) {
+              statusEl.textContent = `${f.name} — arquivo selecionado`;
+          } else {
+              statusEl.textContent = '';
+          }
+      });
+  }
   
   appointmentsTableBody.addEventListener('click', async (e) => {
       const target = e.target;
@@ -418,22 +451,36 @@ document.addEventListener('DOMContentLoaded', () => {
       const app = list.find(a => String(a.id) === String(id));
 
       if (action === 'view-proof') {
-          // If server-backed and comprovaPath exists, fetch the file via protected endpoint
+          // Prefer direct uploads static URL when available (convenience), then try protected endpoint, then fallback to data URL.
+          const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+          if (app && app.comprovantePath) {
+              // try opening /uploads/<path> first
+              try {
+                  const rawUrl = `${backend.replace(/\/$/, '')}/${app.comprovantePath.replace(/^\//, '')}`;
+                  // open in new tab (may be blocked by popup blockers if not user-initiated, but this is a click handler so should be OK)
+                  window.open(rawUrl, '_blank');
+                  return;
+              } catch (e) {
+                  // fallthrough to protected fetch
+              }
+          }
           if (adminToken && app && app.comprovantePath) {
               try {
-                  const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
                   const res = await fetch(`${backend}/api/appointments/${id}/comprovante`, { headers: { Authorization: `Bearer ${adminToken}` } });
                   if (!res.ok) { showAnnouncement('Falha ao baixar comprovante.','danger'); return; }
                   const blob = await res.blob();
                   const url = URL.createObjectURL(blob);
                   window.open(url, '_blank');
-                  // release after some time
                   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                  return;
               } catch (err) {
                   showAnnouncement('Erro ao baixar comprovante.','danger');
               }
-          } else if (app && app.comprovanteDataUrl) {
+          }
+          if (app && app.comprovanteDataUrl) {
               window.open(app.comprovanteDataUrl, '_blank');
+          } else {
+              showAnnouncement('Não há comprovante disponível para este agendamento.','warning');
           }
       } else if (action === 'notify') {
           // Guarda o agendamento atual e prepara a mensagem padrão
@@ -538,6 +585,190 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       }
   });
+
+    // --- Estatísticas (admin) ---
+    const statsSection = document.getElementById('admin-stats-section');
+    const statsRange = document.getElementById('stats-range');
+    const statsDate = document.getElementById('stats-date');
+    const statsRefresh = document.getElementById('stats-refresh');
+    const statsChartEl = document.getElementById('stats-chart');
+    const statsWeatherEl = document.getElementById('stats-weather');
+    let statsChart = null;
+
+    // Ensure default date
+    if (statsDate) statsDate.value = getTodayString();
+
+    // Initialize stats view: load Chart.js if needed and draw
+    async function initializeStats() {
+        // load Chart.js from CDN if not present
+        if (typeof Chart === 'undefined') {
+            await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
+        }
+        await renderStats();
+    }
+
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+    }
+
+    // Aggregate appointments for the given range and reference date
+    function aggregateAppointments(range, referenceDateStr) {
+        const ref = new Date(referenceDateStr + 'T00:00:00');
+        const map = new Map();
+        const revenueMap = new Map();
+        const labels = [];
+
+        // Helper to push label and init maps
+        const pushLabel = (label) => { labels.push(label); map.set(label, 0); revenueMap.set(label, 0); };
+
+        if (range === 'day') {
+            const dayLabel = ref.toLocaleDateString('pt-BR');
+            pushLabel(dayLabel);
+            appointments.forEach(a => {
+                if (a.data === referenceDateStr && a.status !== 'Cancelado') {
+                    map.set(dayLabel, map.get(dayLabel) + 1);
+                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                    revenueMap.set(dayLabel, revenueMap.get(dayLabel) + price);
+                }
+            });
+        } else if (range === 'week') {
+            // compute week start (Monday) and labels for 7 days
+            const start = new Date(ref);
+            const day = start.getDay();
+            const diff = (day + 6) % 7; // make Monday = 0
+            start.setDate(start.getDate() - diff);
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                const label = d.toLocaleDateString('pt-BR');
+                pushLabel(label);
+            }
+            appointments.forEach(a => {
+                if (a.status === 'Cancelado') return;
+                const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
+                if (idx >= 0) {
+                    const l = labels[idx];
+                    map.set(l, map.get(l) + 1);
+                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                    revenueMap.set(l, revenueMap.get(l) + price);
+                }
+            });
+        } else if (range === 'month') {
+            const year = ref.getFullYear();
+            const month = ref.getMonth();
+            const days = new Date(year, month + 1, 0).getDate();
+            for (let d = 1; d <= days; d++) {
+                const date = new Date(year, month, d);
+                const label = date.toLocaleDateString('pt-BR');
+                pushLabel(label);
+            }
+            appointments.forEach(a => {
+                if (a.status === 'Cancelado') return;
+                const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
+                if (idx >= 0) {
+                    const l = labels[idx];
+                    map.set(l, map.get(l) + 1);
+                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                    revenueMap.set(l, revenueMap.get(l) + price);
+                }
+            });
+        } else if (range === 'year') {
+            const year = ref.getFullYear();
+            for (let m = 0; m < 12; m++) {
+                const d = new Date(year, m, 1);
+                const label = d.toLocaleString('pt-BR', { month: 'short' });
+                pushLabel(label);
+            }
+            appointments.forEach(a => {
+                if (a.status === 'Cancelado') return;
+                const dt = new Date(a.data + 'T00:00:00');
+                if (dt.getFullYear() === year) {
+                    const label = new Date(dt.getFullYear(), dt.getMonth(), 1).toLocaleString('pt-BR', { month: 'short' });
+                    map.set(label, (map.get(label) || 0) + 1);
+                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                    revenueMap.set(label, (revenueMap.get(label) || 0) + price);
+                }
+            });
+        }
+
+        return { labels, counts: labels.map(l => map.get(l) || 0), revenue: labels.map(l => revenueMap.get(l) || 0) };
+    }
+
+    // Fetch simple weather summary via Open-Meteo (no key required)
+    async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
+        // Open-Meteo daily summary for weathercode
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode&timezone=auto`;
+        try {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const j = await res.json();
+            // map weather codes to simple labels
+            const codeToLabel = (c) => {
+                if (c === 0) return 'Ensolarado';
+                if ([1,2,3].includes(c)) return 'Nublado';
+                if (c >= 51) return 'Chuvoso';
+                return 'Indeterminado';
+            };
+            const days = (j.daily && j.daily.time) || [];
+            const codes = (j.daily && j.daily.weathercode) || [];
+            return days.map((d, i) => ({ date: d, label: codeToLabel(codes[i] || -1) }));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function renderStats() {
+        const range = statsRange.value || 'month';
+        const refDate = statsDate.value || getTodayString();
+        const data = aggregateAppointments(range, refDate);
+
+        // destroy previous chart if exists
+        if (statsChart) { statsChart.destroy(); statsChart = null; }
+
+        // prepare datasets: counts and revenue
+        const ctx = statsChartEl.getContext('2d');
+        statsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    { label: 'Veículos lavados', data: data.counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
+                    { label: 'Faturamento (R$)', data: data.revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: { type: 'linear', position: 'left', title: { display: true, text: 'Veículos' } },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'R$' } }
+                }
+            }
+        });
+
+        // fetch weather for date range (simple bounding: use first and last label dates when possible)
+        let start = refDate, end = refDate;
+        if (data.labels && data.labels.length > 1) {
+            start = data.labels[0];
+            end = data.labels[data.labels.length - 1];
+        }
+        const weather = await fetchWeatherSummary(start, end);
+        if (weather && weather.length) {
+            statsWeatherEl.textContent = 'Previsão meteorológica: ' + weather.map(w => `${w.date}: ${w.label}`).join(' | ');
+        } else {
+            statsWeatherEl.textContent = 'Dados meteorológicos indisponíveis.';
+        }
+    }
+
+    // wire refresh
+    if (statsRefresh) statsRefresh.addEventListener('click', () => renderStats());
+
   
   serviceForm.addEventListener('submit', (e) => {
       e.preventDefault();
