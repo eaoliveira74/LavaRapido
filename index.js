@@ -802,6 +802,86 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.warn('visual weather fetch failed', e); return null; }
     }
 
+    // --- Weather client-side cache (localStorage) ---
+    const WEATHER_CACHE_KEY = 'weatherCache_v1';
+    const WEATHER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+    const readWeatherCache = () => { try { return JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}'); } catch (e) { return {}; } };
+    const writeWeatherCache = (c) => { try { localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
+
+    // Helper to fetch and cache a Visual Crossing (or fallback) timeline for a small range
+    async function fetchTwoDayWeatherCached(lat, lon) {
+        const start = getTodayString();
+        const tomorrow = (() => { const d = new Date(start + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
+        const key = `${lat.toFixed(4)},${lon.toFixed(4)},${start},${tomorrow}`;
+        const cache = readWeatherCache();
+        const now = Date.now();
+        if (cache[key] && (now - (cache[key].ts || 0) < WEATHER_CACHE_TTL)) return cache[key].data;
+        // try Visual Crossing proxy first
+        let data = null;
+        try {
+            const vc = await fetchVisualWeather(lat, lon, start, tomorrow);
+            if (vc && vc.days) data = vc;
+        } catch (e) { /* ignore */ }
+        if (!data) {
+            // fallback to open-meteo summary (we'll massage it into same shape)
+            const om = await fetchWeatherSummary(start, tomorrow, lat, lon);
+            if (om && om.length) {
+                data = { lat, lon, days: om.map(d => ({ date: d.date, conditionSimple: d.label, temp: d.temp || d.tempmax || null })) };
+            }
+        }
+        cache[key] = { ts: now, data };
+        writeWeatherCache(cache);
+        return data;
+    }
+
+    // Render two small cards in header for today and tomorrow
+    async function renderHomeTwoDayForecast(lat = -23.55, lon = -46.63) {
+        try {
+            const cardsContainer = document.getElementById('home-weather-cards');
+            const todayEl = document.getElementById('weather-card-today');
+            const tomorrowEl = document.getElementById('weather-card-tomorrow');
+            if (todayEl) todayEl.innerHTML = '<div class="title">Hoje</div><div class="cond">Carregando...</div>';
+            if (tomorrowEl) tomorrowEl.innerHTML = '<div class="title">Amanhã</div><div class="cond">Carregando...</div>';
+
+            const data = await fetchTwoDayWeatherCached(lat, lon);
+            if (!data || !data.days || data.days.length === 0) {
+                if (todayEl) todayEl.innerHTML = '<div class="title">Hoje</div><div class="cond">Indisponível</div>';
+                if (tomorrowEl) tomorrowEl.innerHTML = '<div class="title">Amanhã</div><div class="cond">Indisponível</div>';
+                return;
+            }
+            // find today and tomorrow in returned days
+            const todayISO = getTodayString();
+            const tomorrowISO = (() => { const d = new Date(todayISO + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
+            const dayMap = {}; data.days.forEach(d => { dayMap[d.date] = d; });
+            const t0 = dayMap[todayISO] || data.days[0];
+            const t1 = dayMap[tomorrowISO] || data.days[1] || null;
+
+            const renderCard = (el, day, label) => {
+                if (!el) return;
+                if (!day) { el.innerHTML = `<div class="title">${label}</div><div class="cond">Indisponível</div>`; return; }
+                const cond = day.conditionSimple || day.label || (day.conditions || '') || 'Indeterminado';
+                const temp = Math.round(day.temp || day.tempmax || 0);
+                const icon = (cond === 'Ensolarado') ? ICON_SUN : (cond === 'Nublado' ? ICON_CLOUD : (cond === 'Chuvoso' ? ICON_RAIN : ''));
+                el.innerHTML = `
+                    <div class="title">${label}</div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <div class="icon">${icon}</div>
+                        <div>
+                            <div class="temp">${temp}°C</div>
+                            <div class="cond">${cond}</div>
+                        </div>
+                    </div>
+                `;
+                el.setAttribute('title', `${label}: ${cond} — ${temp}°C`);
+            };
+
+            renderCard(todayEl, t0, 'Hoje');
+            renderCard(tomorrowEl, t1, 'Amanhã');
+        } catch (e) {
+            console.warn('Failed to render home forecast', e);
+        }
+    }
+
 
     // Fetch simple weather summary via Open-Meteo (no key required)
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
@@ -910,30 +990,88 @@ document.addEventListener('DOMContentLoaded', () => {
             // Prefer Visual Crossing proxy if available
             const vc = await fetchVisualWeather(lat, lon, start, end);
             if (vc && vc.days) {
-                // show icons (SVG) + localized date labels using Visual Crossing conditionSimple
-                const parts = vc.days.map(w => {
+                // Visual Crossing: render a visual strip of day icons + localized labels
+                const stripEl = document.getElementById('stats-weather-strip');
+                const legendEl = document.getElementById('stats-weather-legend');
+                const infoEl = document.getElementById('stats-weather');
+                if (stripEl) stripEl.innerHTML = '';
+                if (legendEl) legendEl.innerHTML = 'Legenda:';
+
+                vc.days.forEach(w => {
                     const d = new Date(w.date + 'T00:00:00');
                     const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
-                    const iconSvg = (w.conditionSimple === 'Ensolarado') ? ICON_SUN : (w.conditionSimple === 'Nublado' ? ICON_CLOUD : (w.conditionSimple === 'Chuvoso' ? ICON_RAIN : ''));
-                    return `${lbl}: ${iconSvg} <span style=\"vertical-align:middle;color:#cbd5e1;\">${w.conditionSimple}</span>`;
+                    const condition = w.conditionSimple || '';
+                    const iconSvg = (condition === 'Ensolarado') ? ICON_SUN : (condition === 'Nublado' ? ICON_CLOUD : (condition === 'Chuvoso' ? ICON_RAIN : ''));
+                    if (stripEl) {
+                        const dayDiv = document.createElement('div');
+                        dayDiv.className = 'day-icon';
+                        dayDiv.setAttribute('role', 'img');
+                        dayDiv.setAttribute('aria-label', `${lbl}: ${condition}`);
+                        dayDiv.title = `${lbl}: ${w.conditions || condition} ${w.precipprob ? `(${w.precipprob}% precip)` : ''}`;
+                        dayDiv.innerHTML = `${iconSvg}<div class="label">${lbl}</div>`;
+                        stripEl.appendChild(dayDiv);
+                    }
                 });
-                statsWeatherEl.innerHTML = '<div class="small text-secondary">Previsão meteorológica (Visual Crossing):</div><div class="mt-1">' + parts.join(' | ') + '</div>';
+
+                // populate legend
+                if (legendEl) {
+                    legendEl.innerHTML = '';
+                    const makeSpan = (icon, text) => {
+                        const sp = document.createElement('span');
+                        sp.innerHTML = `${icon}<strong style="margin-left:6px;">${text}</strong>`;
+                        return sp;
+                    };
+                    legendEl.appendChild(makeSpan(ICON_SUN, 'Ensolarado'));
+                    legendEl.appendChild(makeSpan(ICON_CLOUD, 'Nublado'));
+                    legendEl.appendChild(makeSpan(ICON_RAIN, 'Chuvoso'));
+                }
+
+                if (infoEl) infoEl.textContent = 'Previsão meteorológica (Visual Crossing).';
                 weather = vc.days;
             } else {
-                // Fallback to Open-Meteo
-                weather = await fetchWeatherSummary(start, end, lat, lon);
-                if (weather && weather.length) {
-                    const parts = weather.map(w => {
+                // Fallback to Open-Meteo: use same strip rendering but normalize fields
+                const days = await fetchWeatherSummary(start, end, lat, lon);
+                const stripEl = document.getElementById('stats-weather-strip');
+                const legendEl = document.getElementById('stats-weather-legend');
+                const infoEl = document.getElementById('stats-weather');
+                if (stripEl) stripEl.innerHTML = '';
+                if (legendEl) legendEl.innerHTML = 'Legenda:';
+
+                if (days && days.length) {
+                    days.forEach(w => {
                         const d = new Date(w.date + 'T00:00:00');
                         const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
-                        const iconSvg = (w.label === 'Ensolarado') ? ICON_SUN : (w.label === 'Nublado' ? ICON_CLOUD : (w.label === 'Chuvoso' ? ICON_RAIN : ''));
-                        return `${lbl}: ${iconSvg} <span style=\"vertical-align:middle;color:#cbd5e1;\">${w.label}</span>`;
+                        const condition = w.conditionSimple || w.label || '';
+                        const iconSvg = (condition === 'Ensolarado') ? ICON_SUN : (condition === 'Nublado' ? ICON_CLOUD : (condition === 'Chuvoso' ? ICON_RAIN : ''));
+                        if (stripEl) {
+                            const dayDiv = document.createElement('div');
+                            dayDiv.className = 'day-icon';
+                            dayDiv.setAttribute('role', 'img');
+                            dayDiv.setAttribute('aria-label', `${lbl}: ${condition}`);
+                            dayDiv.title = `${lbl}: ${condition}`;
+                            dayDiv.innerHTML = `${iconSvg}<div class="label">${lbl}</div>`;
+                            stripEl.appendChild(dayDiv);
+                        }
                     });
-                    statsWeatherEl.innerHTML = '<div class="small text-secondary">Previsão meteorológica:</div><div class="mt-1">' + parts.join(' | ') + '</div>';
+                    // legend
+                    if (legendEl) {
+                        legendEl.innerHTML = '';
+                        const makeSpan = (icon, text) => {
+                            const sp = document.createElement('span');
+                            sp.innerHTML = `${icon}<strong style="margin-left:6px;">${text}</strong>`;
+                            return sp;
+                        };
+                        legendEl.appendChild(makeSpan(ICON_SUN, 'Ensolarado'));
+                        legendEl.appendChild(makeSpan(ICON_CLOUD, 'Nublado'));
+                        legendEl.appendChild(makeSpan(ICON_RAIN, 'Chuvoso'));
+                    }
+                    if (infoEl) infoEl.textContent = 'Previsão meteorológica.';
+                    weather = days;
                 } else {
                     const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
                     const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';
-                    statsWeatherEl.textContent = `Dados meteorológicos indisponíveis. ${attempted}${cepMsg}`;
+                    const infoEl = document.getElementById('stats-weather');
+                    if (infoEl) infoEl.textContent = `Dados meteorológicos indisponíveis. ${attempted}${cepMsg}`;
                     console.debug('Weather unavailable for', { start, end, lat, lon, cepFeedback: cepFeedback && cepFeedback.textContent });
                 }
             }
@@ -1142,4 +1280,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     ev.preventDefault(); toggleToolbar();
                 }
             });
+            // Render home two-day forecast on load using last CEP if present
+            try {
+                (async () => {
+                    const lastCep = localStorage.getItem(STATS_LAST_CEP_KEY);
+                    if (lastCep) {
+                        const resolved = await resolveCepToLatLon(lastCep).catch(()=>null);
+                        if (resolved) await renderHomeTwoDayForecast(resolved.lat, resolved.lon);
+                        else await renderHomeTwoDayForecast();
+                    } else {
+                        await renderHomeTwoDayForecast();
+                    }
+                })();
+            } catch (e) { console.warn('home forecast init failed', e); }
 });
