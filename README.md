@@ -107,3 +107,51 @@ Privacy note
 - CEP resolution uses third-party services (ViaCEP, Open-Meteo geocoding, Nominatim). No CEPs are sent to the project's
    backend in this flow; they are used client-side in the browser. If you require different behavior, we can change the
    implementation to resolve CEPs on the server instead.
+
+APIs externas
+-------------
+Este projeto consome alguns serviços públicos e CDNs para fornecer funcionalidades como resolução de CEP, geocoding e
+previsão do tempo. Abaixo está um inventário das integrações externas, onde são usadas e recomendações operacionais.
+
+- ViaCEP
+   - Endpoint: `https://viacep.com.br/ws/{CEP}/json/`
+   - Uso: resolve um CEP para endereço (logradouro, bairro, localidade, UF). Chamado no cliente (`index.js`) e em scripts de
+      utilidade (`scripts/check_weather.mjs`). Não requer chave.
+   - Recomendações: usar cache (já existe `cepCache_v1`) e tratar erros de rede/limites.
+
+- Open‑Meteo (Geocoding)
+   - Endpoint: `https://geocoding-api.open-meteo.com/v1/search?name={q}&count=1&language=pt`
+   - Uso: converter strings de endereço/cidade em lat/lon. Utilizado como primeira tentativa de geocoding no cliente.
+   - Recomendações: sem chave, mas evitar consultas repetidas (use cache) e mover para backend se precisar de controle de uso.
+
+- Open‑Meteo (Forecast)
+   - Endpoint: `https://api.open-meteo.com/v1/forecast?...&daily=weathercode&timezone=auto`
+   - Uso: recuperar `weathercode` diário para o intervalo solicitado (painel de estatísticas). Cliente mapeia códigos para
+      rótulos/ícones simples.
+   - Recomendações: limitar o intervalo de datas e tratar casos sem dados (o app já exibe mensagem quando não há previsão).
+
+- Nominatim (OpenStreetMap) — fallback de geocoding
+   - Endpoint: `https://nominatim.openstreetmap.org/search.php?q={q}&format=jsonv2&limit=1`
+   - Uso: fallback quando Open‑Meteo não encontra correspondência. Chamado com um User‑Agent informativo.
+   - Observações: política de uso exige respeito (não sobrecarregar); para produção considere um provedor pago ou instância
+      própria de Nominatim.
+
+- WhatsApp (link)
+   - URL: `https://wa.me/55{phone}?text={message}`
+   - Uso: abrir conversa no WhatsApp/WhatsApp Web (não é uma API REST; é apenas um link gerado pelo cliente).
+
+- CDNs / bibliotecas
+   - Chart.js: `https://cdn.jsdelivr.net/npm/chart.js` (carregado dinamicamente pelo cliente)
+   - Bootstrap CSS/JS: `https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/...` (estilos e componentes)
+   - Observações: para ambientes offline ou requisitos de confiabilidade, considere empacotar essas dependências no build.
+
+Boas práticas recomendadas
+-------------------------
+- Centralizar chamadas em backend quando for necessário controlar quotas, adicionar caching compartilhado e esconder chaves.
+- Cache: o cliente já usa `cepCache_v1` e `statsLastCep_v1`. Para produção mova o cache para o backend (Redis, etc.).
+- Respeitar Nominatim: use User‑Agent explicativo e não faça scraping; considere um provedor com SLA para uso pesado.
+- Mensagens UX: informar o usuário quando não houver dados meteorológicos para as datas solicitadas.
+
+Se desejar, posso também:
+- mover a resolução CEP + chamadas de tempo para o backend (implementar endpoints e cache); ou
+- adicionar uma breve seção de políticas de uso no README (como limites e quando acionar o fallback para SÃO PAULO).
