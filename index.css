@@ -76,6 +76,16 @@ body {
 #weather-clear-cache, #weather-test-conn { background:#000; color:#fff; border-color:transparent; }
 .weather-card .icon svg { width:36px; height:36px; }
 .day-icon svg { width:24px; height:24px; }
+
+/* Improve readability of services list in dark themes */
+#services-list { background: #ffffff; border-radius: 6px; }
+#services-list .list-group-item { background: #ffffff; color: #0b1220; border: 1px solid rgba(0,0,0,0.06); }
+#services-list .list-group-item .btn { color: #0b1220; }
+
+/* High-contrast overrides */
+.a11y-high-contrast #services-list { background: #0b1220 !important; }
+.a11y-high-contrast #services-list .list-group-item { background: #0b1220 !important; color: #e6eef8 !important; border-color: rgba(255,255,255,0.06) !important; }
+.a11y-high-contrast #services-list .list-group-item .btn { color: #fff !important; border-color: rgba(255,255,255,0.12) !important; }
 .table {
   --bs-table-bg: #1e293b; /* Fundo da tabela */
   --bs-table-border-color: #334155; /* Cor da borda da tabela */

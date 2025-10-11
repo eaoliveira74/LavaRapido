@@ -176,6 +176,14 @@ app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
 // Serve uploads statically for convenience (note: in production consider securing this)
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+// Visual Crossing weather proxy (requires VISUALCROSSING_API_KEY in env)
+try {
+  const visualWeather = require('./visual-weather');
+  app.use('/api/visual-weather', visualWeather);
+} catch (e) {
+  console.warn('visual-weather route not loaded', e.message);
+}
+
 // Simple health endpoint for container healthchecks
 app.get('/health', (req, res) => {
   const appointments = readAppointments();

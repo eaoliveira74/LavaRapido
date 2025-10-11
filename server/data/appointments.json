@@ -19,7 +19,7 @@
     "horario": "11:00",
     "data": "2025-10-11",
     "observacoes": "sintetico",
-    "status": "Pendente",
+    "status": "Confirmado",
     "comprovantePath": null,
     "createdAt": "2025-10-11T16:12:17.807Z"
   },
@@ -139,7 +139,7 @@
     "horario": "12:00",
     "data": "2025-10-11",
     "observacoes": "retest",
-    "status": "Reservado",
+    "status": "Confirmado",
     "comprovantePath": "uploads/1760199771250-49944102.png",
     "createdAt": "2025-10-11T16:22:51.254Z"
   }
