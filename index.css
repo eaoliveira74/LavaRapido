@@ -57,3 +57,9 @@ body {
   color: #ffffff !important;
   opacity: 1 !important;
 }
+
+/* Forçar branco para todo o texto dentro dos cards do cliente (garante labels, títulos e textos menores) */
+#client-view .card,
+#client-view .card * {
+  color: #ffffff !important;
+}
