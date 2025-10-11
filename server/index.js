@@ -173,7 +173,14 @@ app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// Do not serve uploads publicly; access via protected endpoint only
+// Serve uploads statically for convenience (note: in production consider securing this)
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Simple health endpoint for container healthchecks
+app.get('/health', (req, res) => {
+  const appointments = readAppointments();
+  res.json({ status: 'ok', now: new Date().toISOString(), appointments: appointments.length });
+});
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
