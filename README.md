@@ -46,3 +46,39 @@ Secrets required for CI/CD
 Notes and recommendations
 - For production consider using a proper file storage (S3) and a database instead of local JSON files.
 - Secure `ADMIN_PASSWORD_HASH` and `JWT_SECRET` via repository secrets or environment variables in your deployment platform.
+
+GitHub deployment checklist (step-by-step)
+1. Add repository secrets (Settings → Secrets and variables → Actions):
+   - `GHCR_TOKEN` — a Personal Access Token (classic) with `write:packages` and `read:packages` to allow the backend image to be pushed to GitHub Container Registry (GHCR).
+   - `ADMIN_PASSWORD_HASH` — optional: bcrypt hash of the desired admin password. If omitted the server uses a default development password.
+   - `JWT_SECRET` — a long random secret used to sign admin JWTs. Recommended: 32+ random characters.
+
+2. How to generate the values locally (example commands):
+
+   # Generate a bcrypt hash for password 'minhaSenhaSegura' using Node
+   node -e "console.log(require('bcryptjs').hashSync('minhaSenhaSegura', 8))"
+
+   # Generate a random JWT secret (Node)
+   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+
+   Copy the output strings and paste them into the repository secret values.
+
+3. Enable GitHub Pages for the repository:
+   - Go to Settings → Pages and set the source to the `gh-pages` branch (the frontend deploy Action creates/pushes this branch).
+
+4. After pushing to `main` the Actions will run:
+   - Frontend Action builds the Vite app and deploys `dist/` to GitHub Pages.
+   - Backend Action builds and pushes a Docker image to GHCR (`ghcr.io/<owner>/lava-rapido-server:latest`).
+
+5. Running the stacks (locally)
+   - Using Docker Compose (local):
+
+```bash
+docker compose up --build
+```
+
+   - Backend will be available at http://localhost:4000 and the frontend dev server at http://localhost:5173 (or the port Vite chooses).
+
+Notes and security
+- Keep `ADMIN_PASSWORD_HASH` and `JWT_SECRET` secret in production. Do not commit them to the repo.
+- In production, serve uploaded files from object storage (S3 or equivalent) and use a real database instead of a JSON file.
