@@ -1,0 +1,146 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const DATA_DIR = path.join(__dirname, 'data');
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
+if (!fs.existsSync(APPOINTMENTS_FILE)) fs.writeFileSync(APPOINTMENTS_FILE, '[]');
+
+// simple storage helpers
+function readAppointments() {
+  try {
+    const raw = fs.readFileSync(APPOINTMENTS_FILE, 'utf8');
+    return JSON.parse(raw || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+function writeAppointments(arr) {
+  fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(arr, null, 2));
+}
+
+// Multer setup for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const base = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, base + ext);
+  }
+});
+const upload = multer({ storage });
+
+// Admin credentials: store bcrypt hash in env or default
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin@2025', 8);
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
+const JWT_EXPIRES = '12h';
+
+// Auth endpoint (login with password)
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body || {};
+  if (!password) return res.status(400).json({ error: 'password required' });
+  if (!bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)) return res.status(401).json({ error: 'invalid password' });
+  const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+  res.json({ token });
+});
+
+// Middleware to protect admin routes
+function requireAdmin(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth) return res.status(401).json({ error: 'missing authorization' });
+  const parts = auth.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'invalid authorization header' });
+  try {
+    const payload = jwt.verify(parts[1], JWT_SECRET);
+    if (payload.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'invalid token' });
+  }
+}
+
+// Create appointment (with optional comprovante upload)
+app.post('/api/appointments', upload.single('comprovante'), (req, res) => {
+  const { nomeCliente, telefoneCliente, servicoId, horario, data, observacoes } = req.body || {};
+  const appointments = readAppointments();
+  const id = Date.now().toString(36) + '-' + Math.round(Math.random() * 1e6).toString(36);
+  const newA = {
+    id,
+    nomeCliente: nomeCliente || '',
+    telefoneCliente: telefoneCliente || '',
+    servicoId: servicoId || null,
+    horario: horario || '',
+    data: data || '',
+    observacoes: observacoes || '',
+    status: req.file ? 'Reservado' : 'Pendente',
+    comprovantePath: req.file ? path.relative(__dirname, req.file.path).replace(/\\/g, '/') : null,
+    createdAt: new Date().toISOString()
+  };
+  appointments.push(newA);
+  writeAppointments(appointments);
+  res.status(201).json(newA);
+});
+
+// List appointments (admin)
+app.get('/api/appointments', requireAdmin, (req, res) => {
+  const appointments = readAppointments();
+  res.json(appointments);
+});
+
+// Download/view comprovante file (admin)
+app.get('/api/appointments/:id/comprovante', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const appointments = readAppointments();
+  const ap = appointments.find(a => a.id === id);
+  if (!ap || !ap.comprovantePath) return res.status(404).json({ error: 'comprovante not found' });
+  const abs = path.join(__dirname, ap.comprovantePath);
+  res.sendFile(abs);
+});
+
+// Confirm (keep) appointment (admin)
+app.post('/api/appointments/:id/confirm', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const appointments = readAppointments();
+  const ap = appointments.find(a => a.id === id);
+  if (!ap) return res.status(404).json({ error: 'not found' });
+  ap.status = 'Confirmado';
+  writeAppointments(appointments);
+  res.json(ap);
+});
+
+// Delete appointment (admin)
+app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  let appointments = readAppointments();
+  const idx = appointments.findIndex(a => a.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'not found' });
+  const [removed] = appointments.splice(idx, 1);
+  // remove file if exists
+  if (removed.comprovantePath) {
+    const abs = path.join(__dirname, removed.comprovantePath);
+    if (fs.existsSync(abs)) {
+      try { fs.unlinkSync(abs); } catch (e) { /* ignore */ }
+    }
+  }
+  writeAppointments(appointments);
+  res.json({ ok: true });
+});
+
+// Serve uploads statically for convenience (protected route not used)
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
