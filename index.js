@@ -700,6 +700,75 @@ document.addEventListener('DOMContentLoaded', () => {
         return { labels, counts: labels.map(l => map.get(l) || 0), revenue: labels.map(l => revenueMap.get(l) || 0) };
     }
 
+    // Resolve CEP (Brazil postal code) to latitude/longitude using ViaCEP
+    async function resolveCepToLatLon(cep) {
+        if (!cep) return null;
+        // normalize: remove non-digits
+        const cleaned = (cep || '').toString().replace(/\D/g, '');
+        if (cleaned.length < 8) return null;
+        try {
+            const url = `https://viacep.com.br/ws/${cleaned}/json/`;
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const j = await res.json();
+            if (j.erro) return null;
+            // ViaCEP returns uf/localidade/bairro but not coordinates. Try several geocoding queries (most specific first).
+            const candidates = [];
+            const parts = [ (j.localidade || '').trim(), (j.uf || '').trim(), (j.bairro || '').trim(), cleaned ];
+            // build a few candidate queries
+            if (parts[0] && parts[1] && parts[2]) candidates.push(`${parts[0]} ${parts[2]} ${parts[1]}`);
+            if (parts[0] && parts[1]) candidates.push(`${parts[0]} ${parts[1]}`);
+            if (parts[2] && parts[1]) candidates.push(`${parts[2]} ${parts[1]}`);
+            candidates.push(cleaned);
+            for (const cand of candidates) {
+                const q = encodeURIComponent(cand);
+                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=1&language=pt`;
+                try {
+                    const gres = await fetch(geoUrl);
+                    if (!gres.ok) continue;
+                    const gj = await gres.json();
+                    if (gj.results && gj.results.length > 0) {
+                        const r = gj.results[0];
+                        return { lat: r.latitude, lon: r.longitude };
+                    }
+                } catch (e) {
+                    // try next candidate
+                }
+            }
+            // nothing matched in Open-Meteo geocoding — try Nominatim (OpenStreetMap) as a fallback
+            try {
+                const nomq = encodeURIComponent(`${j.localidade || ''} ${j.uf || ''} Brasil`.trim());
+                const nomUrl = `https://nominatim.openstreetmap.org/search.php?q=${nomq}&format=jsonv2&limit=1`;
+                const nres = await fetch(nomUrl, { headers: { 'User-Agent': 'LavaRapido-App/1.0 (+https://example.local)' } });
+                if (nres.ok) {
+                    const nj = await nres.json();
+                    if (nj && nj.length > 0 && nj[0].lat && nj[0].lon) {
+                        return { lat: parseFloat(nj[0].lat), lon: parseFloat(nj[0].lon) };
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+            // nothing matched
+            return null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Simple CEP cache helpers (localStorage)
+    const CEP_CACHE_KEY = 'cepCache_v1';
+    const readCepCache = () => {
+        try { return JSON.parse(localStorage.getItem(CEP_CACHE_KEY) || '{}'); } catch (e) { return {}; }
+    };
+    const writeCepCache = (c) => { try { localStorage.setItem(CEP_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
+
+    // SVG icons used in the stats view (small, inline)
+    const ICON_SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="#FFD54A"/><g stroke="#FFD54A" stroke-width="1.2" stroke-linecap="round"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></g></svg>';
+    const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#B0BEC5"/></svg>';
+    const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/><g stroke="#4FC3F7" stroke-linecap="round" stroke-width="1.5"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
+
+
     // Fetch simple weather summary via Open-Meteo (no key required)
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
         // Open-Meteo daily summary for weathercode
@@ -708,16 +777,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(url);
             if (!res.ok) return null;
             const j = await res.json();
-            // map weather codes to simple labels
-            const codeToLabel = (c) => {
-                if (c === 0) return 'Ensolarado';
-                if ([1,2,3].includes(c)) return 'Nublado';
-                if (c >= 51) return 'Chuvoso';
-                return 'Indeterminado';
+            // map weather codes to simple labels and icons
+            const codeToLabelAndIcon = (c) => {
+                // 0 = clear sky, 1-3 mainly clear/partly cloudy/overcast, 51+ light-moderate precipitation
+                if (c === 0) return { label: 'Ensolarado', icon: '☀️' };
+                if ([1,2,3].includes(c)) return { label: 'Nublado', icon: '☁️' };
+                if (c >= 51) return { label: 'Chuvoso', icon: '🌧️' };
+                return { label: 'Indeterminado', icon: '❓' };
             };
             const days = (j.daily && j.daily.time) || [];
             const codes = (j.daily && j.daily.weathercode) || [];
-            return days.map((d, i) => ({ date: d, label: codeToLabel(codes[i] || -1) }));
+            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1) }));
         } catch (e) {
             return null;
         }
@@ -761,16 +831,56 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // fetch weather for date range (simple bounding: use first and last label dates when possible)
+        // Open-Meteo expects dates in YYYY-MM-DD. Our labels are localized (pt-BR) so convert when needed.
         let start = refDate, end = refDate;
         if (data.labels && data.labels.length > 1) {
-            start = data.labels[0];
-            end = data.labels[data.labels.length - 1];
+            const toISO = (lbl) => {
+                if (!lbl) return refDate;
+                // most labels are in 'dd/mm/yyyy'
+                const parts = lbl.split('/');
+                if (parts.length === 3) {
+                    const [d, m, y] = parts;
+                    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                }
+                // fallback to Date parse
+                const dt = new Date(lbl + 'T00:00:00');
+                return isNaN(dt.getTime()) ? refDate : dt.toISOString().split('T')[0];
+            };
+            start = toISO(data.labels[0]);
+            end = toISO(data.labels[data.labels.length - 1]);
         }
-        const lat = parseFloat((document.getElementById('stats-lat') && document.getElementById('stats-lat').value) || -23.55);
-        const lon = parseFloat((document.getElementById('stats-lon') && document.getElementById('stats-lon').value) || -46.63);
+        // resolve CEP input to lat/lon if provided
+        // resolve CEP input to lat/lon if provided, using cache when possible
+        const cepInput = document.getElementById('stats-cep');
+        const cepFeedback = document.getElementById('stats-cep-feedback');
+        let lat = -23.55, lon = -46.63; // default São Paulo
+        if (cepFeedback) { cepFeedback.classList.add('d-none'); cepFeedback.textContent = ''; }
+        if (cepInput && cepInput.value) {
+            const cleanedCep = (cepInput.value || '').toString().replace(/\D/g, '');
+            const cache = readCepCache();
+            if (cache[cleanedCep]) {
+                lat = cache[cleanedCep].lat; lon = cache[cleanedCep].lon;
+            } else {
+                const resolved = await resolveCepToLatLon(cepInput.value);
+                if (resolved) {
+                    lat = resolved.lat; lon = resolved.lon;
+                    cache[cleanedCep] = { lat, lon, ts: Date.now() };
+                    writeCepCache(cache);
+                } else {
+                    if (cepFeedback) { cepFeedback.classList.remove('d-none'); cepFeedback.textContent = 'Não foi possível resolver este CEP para coordenadas. Usando local padrão.'; }
+                }
+            }
+        }
         const weather = await fetchWeatherSummary(start, end, lat, lon);
         if (weather && weather.length) {
-            statsWeatherEl.textContent = 'Previsão meteorológica: ' + weather.map(w => `${w.date}: ${w.label}`).join(' | ');
+            // show icons (SVG) + localized date labels
+            const parts = weather.map(w => {
+                const d = new Date(w.date + 'T00:00:00');
+                const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
+                const iconSvg = (w.label === 'Ensolarado') ? ICON_SUN : (w.label === 'Nublado' ? ICON_CLOUD : (w.label === 'Chuvoso' ? ICON_RAIN : ''));
+                return `${lbl}: ${iconSvg} <span style=\"vertical-align:middle;color:#cbd5e1;\">${w.label}</span>`;
+            });
+            statsWeatherEl.innerHTML = '<div class="small text-secondary">Previsão meteorológica:</div><div class="mt-1">' + parts.join(' | ') + '</div>';
         } else {
             statsWeatherEl.textContent = 'Dados meteorológicos indisponíveis.';
         }
