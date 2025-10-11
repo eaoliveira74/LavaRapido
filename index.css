@@ -30,6 +30,14 @@ body {
   outline: 3px solid #ffdd57;
   outline-offset: 2px;
 }
+
+/* Accessibility toolbar specific styles (make controls black) */
+#a11y-toolbar { background: #000 !important; color: #fff !important; }
+#a11y-toolbar .form-check-label, #a11y-toolbar .small { color: #fff !important; }
+#a11y-toolbar .form-check-input:checked { background-color: #000; border-color: #fff; }
+#a11y-toolbar .form-check-input { background-color: #000; border-color: #fff; }
+#a11y-toolbar .btn-outline-secondary { color: #fff; border-color: #fff; background: #000; }
+#a11y-toolbar .btn-outline-secondary:hover { background: #111; border-color: #fff; }
 .table {
   --bs-table-bg: #1e293b; /* Fundo da tabela */
   --bs-table-border-color: #334155; /* Cor da borda da tabela */
