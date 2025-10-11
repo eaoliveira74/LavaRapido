@@ -35,3 +35,9 @@ body {
 .modal-content {
   background-color: #1e293b;
 }
+
+/* Tornar textos secundários brancos dentro da view do cliente para melhor contraste */
+#client-view .text-secondary,
+#client-view .small.text-secondary {
+  color: #f8fafc !important;
+}
