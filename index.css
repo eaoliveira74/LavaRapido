@@ -37,7 +37,13 @@ body {
 }
 
 /* Tornar textos secundários brancos dentro da view do cliente para melhor contraste */
+/* Alvo ampliado para cobrir variações (cards, listas, parágrafos) */
 #client-view .text-secondary,
-#client-view .small.text-secondary {
+#client-view .small.text-secondary,
+#client-view .card .card-body .text-secondary,
+#client-view .list-group .text-secondary,
+#client-view p.text-secondary,
+#client-view .card .card-body p,
+#client-view .card .card-body small {
   color: #f8fafc !important;
 }
