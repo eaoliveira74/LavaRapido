@@ -214,8 +214,10 @@ body {
   color: #ffffff !important;
 }
 
-/* Strong override: ensure services list remains readable even against broad admin rules */
-#admin-view #services-list { background: #ffffff !important; border-radius: 6px; }
-#admin-view #services-list .list-group-item { background: #ffffff !important; color: #0b1220 !important; border: 1px solid rgba(0,0,0,0.06) !important; }
-#admin-view #services-list .list-group-item, #admin-view #services-list .list-group-item * { color: #0b1220 !important; }
-#admin-view #services-list .list-group-item .btn { color: #0b1220 !important; border-color: rgba(11,18,32,0.12) !important; }
+/* Strong override: style services list as black background with white text in admin view */
+#admin-view #services-list { background: #000000 !important; border-radius: 6px; padding: 6px; }
+#admin-view #services-list .list-group-item { background: #000000 !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.04) !important; }
+/* Force all children to be readable */
+#admin-view #services-list .list-group-item, #admin-view #services-list .list-group-item * { color: #ffffff !important; }
+#admin-view #services-list .list-group-item .btn { color: #ffffff !important; border-color: rgba(255,255,255,0.08) !important; background: transparent !important; }
+#admin-view #services-list .list-group-item .btn:hover { background: rgba(255,255,255,0.04) !important; }
