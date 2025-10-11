@@ -82,3 +82,28 @@ docker compose up --build
 Notes and security
 - Keep `ADMIN_PASSWORD_HASH` and `JWT_SECRET` secret in production. Do not commit them to the repo.
 - In production, serve uploaded files from object storage (S3 or equivalent) and use a real database instead of a JSON file.
+
+CEP and weather settings (admin statistics)
+----------------------------------------
+The admin "Estatísticas" view accepts a CEP (Código de Endereçamento Postal) which the app will
+use to look up coordinates and fetch simple daily weather summaries from Open-Meteo.
+
+- When you enter a CEP in the admin stats panel, the application will try to resolve it via ViaCEP
+   and then geocode the resulting locality (Open-Meteo geocoding, with Nominatim as a fallback).
+- The last CEP you entered is persisted in your browser's `localStorage` under the key
+   `statsLastCep_v1` so the field remains prefilled on future visits.
+- Resolved CEP coordinates are cached in `localStorage` under the key `cepCache_v1` to reduce
+   repeated external lookups.
+- If the CEP cannot be resolved to coordinates, the UI will show a small warning and the app will
+   fall back to default coordinates (São Paulo) for the weather lookup.
+
+Clearing cached CEPs / last CEP
+--------------------------------
+- To clear the stored last CEP and any cached CEP coordinates, open the browser devtools → Application → Local Storage
+   and remove the keys `statsLastCep_v1` and `cepCache_v1` for this site. Alternatively you can clear all site data.
+
+Privacy note
+------------
+- CEP resolution uses third-party services (ViaCEP, Open-Meteo geocoding, Nominatim). No CEPs are sent to the project's
+   backend in this flow; they are used client-side in the browser. If you require different behavior, we can change the
+   implementation to resolve CEPs on the server instead.
