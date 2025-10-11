@@ -6,10 +6,16 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+// Security middlewares
+app.use(helmet());
+app.use(cors({ origin: true }));
+// parse JSON with a reasonable limit
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -32,7 +38,7 @@ function writeAppointments(arr) {
   fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(arr, null, 2));
 }
 
-// Multer setup for file uploads
+// Multer setup for file uploads with size limit (1 MB) and file filter
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => {
@@ -41,15 +47,34 @@ const storage = multer.diskStorage({
     cb(null, base + ext);
   }
 });
-const upload = multer({ storage });
+
+function fileFilter (req, file, cb) {
+  // Accept images and PDFs only
+  const allowed = /jpeg|jpg|png|gif|pdf/;
+  const mimetype = allowed.test((file.mimetype || '').toLowerCase());
+  const extname = allowed.test(path.extname(file.originalname || '').toLowerCase());
+  if (mimetype && extname) return cb(null, true);
+  cb(new Error('Invalid file type. Only images and PDFs are allowed.'));
+}
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 1 * 1024 * 1024 }, // 1 MB
+  fileFilter
+});
 
 // Admin credentials: store bcrypt hash in env or default
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin@2025', 8);
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 const JWT_EXPIRES = '12h';
 
+// Rate limiter for auth endpoints to slow brute force
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
+
+// Apply auth limiter to login route later
+
 // Auth endpoint (login with password)
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', authLimiter, (req, res) => {
   const { password } = req.body || {};
   if (!password) return res.status(400).json({ error: 'password required' });
   if (!bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)) return res.status(401).json({ error: 'invalid password' });
@@ -75,6 +100,10 @@ function requireAdmin(req, res, next) {
 // Create appointment (with optional comprovante upload)
 app.post('/api/appointments', upload.single('comprovante'), (req, res) => {
   const { nomeCliente, telefoneCliente, servicoId, horario, data, observacoes } = req.body || {};
+  // basic input length checks
+  if ((nomeCliente || '').length > 100) return res.status(400).json({ error: 'nomeCliente too long' });
+  if ((telefoneCliente || '').length > 30) return res.status(400).json({ error: 'telefoneCliente too long' });
+  if ((observacoes || '').length > 500) return res.status(400).json({ error: 'observacoes too long' });
   const appointments = readAppointments();
   const id = Date.now().toString(36) + '-' + Math.round(Math.random() * 1e6).toString(36);
   const newA = {
@@ -101,13 +130,18 @@ app.get('/api/appointments', requireAdmin, (req, res) => {
 });
 
 // Download/view comprovante file (admin)
+// Return file as attachment; route is protected
 app.get('/api/appointments/:id/comprovante', requireAdmin, (req, res) => {
   const id = req.params.id;
   const appointments = readAppointments();
   const ap = appointments.find(a => a.id === id);
   if (!ap || !ap.comprovantePath) return res.status(404).json({ error: 'comprovante not found' });
   const abs = path.join(__dirname, ap.comprovantePath);
-  res.sendFile(abs);
+  res.sendFile(abs, { dotfiles: 'deny' }, function (err) {
+    if (err) {
+      res.status(500).json({ error: 'failed to send file' });
+    }
+  });
 });
 
 // Confirm (keep) appointment (admin)
@@ -139,8 +173,7 @@ app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// Serve uploads statically for convenience (protected route not used)
-app.use('/uploads', express.static(UPLOADS_DIR));
+// Do not serve uploads publicly; access via protected endpoint only
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
