@@ -11,6 +11,26 @@
 </head>
   <body>
 
+    <!-- Accessibility toolbar -->
+    <div id="a11y-toolbar" class="p-2" style="background:#f8fafc;">
+      <div class="container d-flex gap-2 align-items-center">
+        <span class="small text-secondary">Acessibilidade:</span>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="a11y-contrast" aria-checked="false">
+          <label class="form-check-label small" for="a11y-contrast">Alto contraste</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="a11y-large-text" aria-checked="false">
+          <label class="form-check-label small" for="a11y-large-text">Texto maior</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="a11y-reduced-motion" aria-checked="false">
+          <label class="form-check-label small" for="a11y-reduced-motion">Reduzir movimento</label>
+        </div>
+        <button id="a11y-reset" class="btn btn-outline-secondary btn-sm ms-auto">Restaurar padrão</button>
+      </div>
+    </div>
+
     <!-- Cabeçalho da Aplicação -->
     <header class="py-4 shadow-sm">
       <div class="container d-flex justify-content-between align-items-center">

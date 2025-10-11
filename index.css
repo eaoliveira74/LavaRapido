@@ -6,6 +6,30 @@ body {
   background-color: #1e293b; /* Cor dos cards (slate-800) */
   border: 1px solid #334155; /* Cor da borda dos cards (slate-700) */
 }
+
+/* Accessibility helpers */
+.a11y-high-contrast {
+  background: #000 !important;
+  color: #fff !important;
+}
+.a11y-high-contrast .card {
+  background: #111 !important;
+  border-color: #444 !important;
+}
+.a11y-large-text {
+  font-size: 1.125rem !important; /* 18px-ish */
+}
+/* Reduced motion: remove animations/transitions */
+.a11y-reduced-motion *, .a11y-reduced-motion *::before, .a11y-reduced-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Strong focus outline for keyboard users */
+:focus {
+  outline: 3px solid #ffdd57;
+  outline-offset: 2px;
+}
 .table {
   --bs-table-bg: #1e293b; /* Fundo da tabela */
   --bs-table-border-color: #334155; /* Cor da borda da tabela */
