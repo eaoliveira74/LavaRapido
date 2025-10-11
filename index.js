@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const renderClientView = () => {
     populateServiceSelect();
     updateAvailableTimes();
+        renderClientAppointments();
   };
   
   const renderAdminView = (activeTab = 'appointments') => {
@@ -178,6 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${app.observacoes || 'Nenhuma'}</td>
               <td class="${statusColors[app.status] || ''}">${app.status}</td>
               <td>
+                  ${app.comprovanteDataUrl ? `<button class="btn btn-sm btn-outline-info" data-action="view-proof" data-id="${app.id}">Ver Comprovante</button>` : ''}
+              </td>
+              <td>
                   <div class="d-flex flex-wrap gap-1">
                       <button class="btn btn-sm btn-info" data-action="notify" data-id="${app.id}">Notificar</button>
                       <button class="btn btn-sm ${app.status === 'Concluído' ? 'btn-success' : 'btn-outline-success'}" data-action="complete" data-id="${app.id}">Concluído</button>
@@ -189,6 +193,56 @@ document.addEventListener('DOMContentLoaded', () => {
           appointmentsTableBody.appendChild(row);
       });
   };
+
+      // Renderiza os agendamentos do cliente atual na view do cliente
+      const clientAppointmentsList = document.getElementById('client-appointments-list');
+      const renderClientAppointments = () => {
+          clientAppointmentsList.innerHTML = '';
+          const clientNameField = document.getElementById('nomeCliente');
+          const clientName = clientNameField ? clientNameField.value.trim() : '';
+          const myAppointments = appointments.filter(a => !clientName || a.nomeCliente === clientName);
+          if (myAppointments.length === 0) {
+              clientAppointmentsList.innerHTML = '<p class="text-secondary">Nenhum agendamento encontrado para seu nome.</p>';
+              return;
+          }
+          myAppointments.sort((a,b) => new Date(a.data) - new Date(b.data));
+          myAppointments.forEach(app => {
+              const div = document.createElement('div');
+              div.className = 'd-flex align-items-center justify-content-between gap-2 mb-2';
+              div.innerHTML = `
+                  <div>
+                      <div><strong>${new Date(app.data + 'T00:00:00').toLocaleDateString('pt-BR')} ${app.horario}</strong></div>
+                      <div class="text-secondary small">${(services.find(s=>s.id===app.servicoId)?.nome)||'N/A'}</div>
+                  </div>
+                  <div class="d-flex gap-2">
+                      ${app.comprovanteDataUrl ? `<a href="${app.comprovanteDataUrl}" target="_blank" class="btn btn-sm btn-outline-info">Comprovante</a>` : `<label class="btn btn-sm btn-outline-primary mb-0">Enviar
+                          <input type="file" accept="image/*,application/pdf" data-id="${app.id}" class="d-none proof-file-input">
+                      </label>`}
+                  </div>
+              `;
+              clientAppointmentsList.appendChild(div);
+          });
+          // attach listeners for file inputs
+          document.querySelectorAll('.proof-file-input').forEach(input => {
+              input.addEventListener('change', async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const id = parseInt(e.target.dataset.id);
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                      const dataUrl = reader.result;
+                      const idx = appointments.findIndex(a => a.id === id);
+                      if (idx === -1) return;
+                      appointments[idx].comprovanteDataUrl = dataUrl;
+                      appointments[idx].status = 'Aguardando Verificação';
+                      saveData();
+                      renderClientAppointments();
+                      showAnnouncement('Comprovante enviado com sucesso. Aguardando verificação.');
+                  };
+                  reader.readAsDataURL(file);
+              });
+          });
+      };
   
   const renderServicesList = () => {
       servicesList.innerHTML = '';
@@ -263,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
     appointmentForm.reset();
     completionTimeAlert.classList.add('d-none');
     updateAvailableTimes();
+        renderClientAppointments();
   });
   
   appointmentsTableBody.addEventListener('click', (e) => {
@@ -272,7 +327,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!action) return;
       const app = appointments.find(a => a.id === id);
 
-      if (action === 'notify') {
+      if (action === 'view-proof') {
+          if (app && app.comprovanteDataUrl) window.open(app.comprovanteDataUrl, '_blank');
+      } else if (action === 'notify') {
           // Guarda o agendamento atual e prepara a mensagem padrão
           currentNotificationAppointment = app;
           const serviceName = services.find(s => s.id === app.servicoId)?.nome || 'serviço';
@@ -297,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       saveData();
       renderAppointmentsTable();
+      renderClientAppointments();
   });
   
   /**
