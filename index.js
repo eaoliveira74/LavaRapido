@@ -787,6 +787,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#B0BEC5"/></svg>';
     const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/><g stroke="#4FC3F7" stroke-linecap="round" stroke-width="1.5"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
 
+    // Fetch weather from the server-side Visual Crossing proxy
+    async function fetchVisualWeather(lat, lon, startDate, endDate) {
+        try {
+            const backend = window.__BACKEND_URL__ || 'http://localhost:4000';
+            const url = new URL(`${backend}/api/visual-weather`);
+            url.searchParams.set('lat', lat);
+            url.searchParams.set('lon', lon);
+            if (startDate) url.searchParams.set('start', startDate);
+            if (endDate) url.searchParams.set('end', endDate);
+            const res = await fetch(url.toString());
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) { console.warn('visual weather fetch failed', e); return null; }
+    }
+
 
     // Fetch simple weather summary via Open-Meteo (no key required)
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
@@ -892,27 +907,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let weather = null;
         try {
-            weather = await fetchWeatherSummary(start, end, lat, lon);
+            // Prefer Visual Crossing proxy if available
+            const vc = await fetchVisualWeather(lat, lon, start, end);
+            if (vc && vc.days) {
+                // show icons (SVG) + localized date labels using Visual Crossing conditionSimple
+                const parts = vc.days.map(w => {
+                    const d = new Date(w.date + 'T00:00:00');
+                    const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
+                    const iconSvg = (w.conditionSimple === 'Ensolarado') ? ICON_SUN : (w.conditionSimple === 'Nublado' ? ICON_CLOUD : (w.conditionSimple === 'Chuvoso' ? ICON_RAIN : ''));
+                    return `${lbl}: ${iconSvg} <span style=\"vertical-align:middle;color:#cbd5e1;\">${w.conditionSimple}</span>`;
+                });
+                statsWeatherEl.innerHTML = '<div class="small text-secondary">Previsão meteorológica (Visual Crossing):</div><div class="mt-1">' + parts.join(' | ') + '</div>';
+                weather = vc.days;
+            } else {
+                // Fallback to Open-Meteo
+                weather = await fetchWeatherSummary(start, end, lat, lon);
+                if (weather && weather.length) {
+                    const parts = weather.map(w => {
+                        const d = new Date(w.date + 'T00:00:00');
+                        const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
+                        const iconSvg = (w.label === 'Ensolarado') ? ICON_SUN : (w.label === 'Nublado' ? ICON_CLOUD : (w.label === 'Chuvoso' ? ICON_RAIN : ''));
+                        return `${lbl}: ${iconSvg} <span style=\"vertical-align:middle;color:#cbd5e1;\">${w.label}</span>`;
+                    });
+                    statsWeatherEl.innerHTML = '<div class="small text-secondary">Previsão meteorológica:</div><div class="mt-1">' + parts.join(' | ') + '</div>';
+                } else {
+                    const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                    const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';
+                    statsWeatherEl.textContent = `Dados meteorológicos indisponíveis. ${attempted}${cepMsg}`;
+                    console.debug('Weather unavailable for', { start, end, lat, lon, cepFeedback: cepFeedback && cepFeedback.textContent });
+                }
+            }
         } catch (err) {
             console.error('Erro ao buscar weather:', err);
-            weather = null;
         }
-        if (weather && weather.length) {
-            // show icons (SVG) + localized date labels
-            const parts = weather.map(w => {
-                const d = new Date(w.date + 'T00:00:00');
-                const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
-                const iconSvg = (w.label === 'Ensolarado') ? ICON_SUN : (w.label === 'Nublado' ? ICON_CLOUD : (w.label === 'Chuvoso' ? ICON_RAIN : ''));
-                return `${lbl}: ${iconSvg} <span style=\"vertical-align:middle;color:#cbd5e1;\">${w.label}</span>`;
-            });
-            statsWeatherEl.innerHTML = '<div class="small text-secondary">Previsão meteorológica:</div><div class="mt-1">' + parts.join(' | ') + '</div>';
-        } else {
-            // Provide more information for debugging: attempted coordinates and any CEP feedback
-            const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-            const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';
-            statsWeatherEl.textContent = `Dados meteorológicos indisponíveis. ${attempted}${cepMsg}`;
-            console.debug('Weather unavailable for', { start, end, lat, lon, cepFeedback: cepFeedback && cepFeedback.textContent });
-        }
+
+        // If we have Visual Crossing data, also populate the home header with today's weather
+        try {
+            const homeEl = document.getElementById('home-weather');
+            if (homeEl && weather && weather.length) {
+                // find today's date
+                const todayISO = getTodayString();
+                const today = weather.find(d => d.date === todayISO) || weather[0];
+                if (today) {
+                    const iconSvg = (today.conditionSimple === 'Ensolarado') ? ICON_SUN : (today.conditionSimple === 'Nublado' ? ICON_CLOUD : (today.conditionSimple === 'Chuvoso' ? ICON_RAIN : ''));
+                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — ${Math.round(today.temp || today.tempmax || 0)}°C`;
+                }
+            }
+        } catch (e) { /* ignore */ }
     }
 
     // (debugResolveCep removed) — production build: no debug button wired
