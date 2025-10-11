@@ -108,29 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
     populateServiceSelect();
     updateAvailableTimes();
     renderClientAppointments();
-    // temporary: force white text in client view if CSS isn't applied
-    try { forceClientTextWhite(); } catch(e) { /* ignore */ }
-  };
-
-  // Temporary helper to force text color white inside #client-view (diagnostic)
-  const forceClientTextWhite = () => {
-      const container = document.getElementById('client-view');
-      if (!container) return;
-      const elems = container.querySelectorAll('*');
-      elems.forEach(el => {
-          // only change elements that currently have a dark color set or inherit muted color
-          const style = window.getComputedStyle(el);
-          if (!style) return;
-          const color = style.color;
-          // if color is dark (heuristic: rgb values all < 120), force to white
-          const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-          if (m) {
-              const r = parseInt(m[1],10), g = parseInt(m[2],10), b = parseInt(m[3],10);
-              if (r < 120 && g < 120 && b < 120) {
-                  el.style.color = '#ffffff';
-              }
-          }
-      });
   };
   
   const renderAdminView = (activeTab = 'appointments') => {
