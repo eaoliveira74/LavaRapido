@@ -38,6 +38,26 @@ body {
 #a11y-toolbar .form-check-input { background-color: #000; border-color: #fff; }
 #a11y-toolbar .btn-outline-secondary { color: #fff; border-color: #fff; background: #000; }
 #a11y-toolbar .btn-outline-secondary:hover { background: #111; border-color: #fff; }
+
+/* Collapsed toolbar and floating toggle button */
+#a11y-toolbar.collapsed { height: 40px; overflow: hidden; padding-top: .25rem; padding-bottom: .25rem; }
+#a11y-toggle {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1050;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  background: #000;
+  color: #fff;
+  border: 1px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+#a11y-toggle:focus { outline: 3px solid #ffdd57; }
 .table {
   --bs-table-bg: #1e293b; /* Fundo da tabela */
   --bs-table-border-color: #334155; /* Cor da borda da tabela */

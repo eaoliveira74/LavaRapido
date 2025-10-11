@@ -1042,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Accessibility toolbar wiring ---
             const A11Y_KEY = 'a11yPreferences_v1';
-            const a11yDefaults = { contrast: false, largeText: false };
+            const a11yDefaults = { contrast: false, largeText: false, collapsed: true };
             const readA11y = () => { try { return JSON.parse(localStorage.getItem(A11Y_KEY) || JSON.stringify(a11yDefaults)); } catch(e){ return a11yDefaults; } };
             const writeA11y = (o) => { try { localStorage.setItem(A11Y_KEY, JSON.stringify(o)); } catch(e){} };
             const applyA11y = (prefs) => {
@@ -1050,6 +1050,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 b.classList.toggle('a11y-high-contrast', !!prefs.contrast);
                 b.classList.toggle('a11y-large-text', !!prefs.largeText);
             b.classList.toggle('a11y-reduced-motion', false);
+                // toolbar collapsed state
+                const toolbar = document.getElementById('a11y-toolbar');
+                if (toolbar) toolbar.classList.toggle('collapsed', !!prefs.collapsed);
+                const toggleBtn = document.getElementById('a11y-toggle');
+                if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(!prefs.collapsed));
                 // update aria-checked attributes on inputs if present
                 const ic = document.getElementById('a11y-contrast');
                 const il = document.getElementById('a11y-large-text');
@@ -1057,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (il) { il.checked = !!prefs.largeText; il.setAttribute('aria-checked', String(!!prefs.largeText)); }
             };
 
-            // Initialize toolbar from saved prefs
+            // Initialize toolbar from saved prefs (including collapsed)
             try {
                 const saved = readA11y();
                 applyA11y(saved);
@@ -1070,7 +1075,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const elReset = document.getElementById('a11y-reset');
 
             const onChange = () => {
-                const prefs = { contrast: !!(elContrast && elContrast.checked), largeText: !!(elLargeText && elLargeText.checked) };
+                const toolbar = document.getElementById('a11y-toolbar');
+                const prefs = { contrast: !!(elContrast && elContrast.checked), largeText: !!(elLargeText && elLargeText.checked), collapsed: !!(toolbar && toolbar.classList.contains('collapsed')) };
                 applyA11y(prefs);
                 writeA11y(prefs);
             };
@@ -1078,4 +1084,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (elLargeText) elLargeText.addEventListener('change', onChange);
             // no reduced-motion listener (control removed)
             if (elReset) elReset.addEventListener('click', () => { writeA11y(a11yDefaults); applyA11y(a11yDefaults); showAnnouncement('Preferências de acessibilidade restauradas.','success'); });
+
+            // Floating toggle and keyboard shortcut (Alt+M)
+            const toggleToolbar = () => {
+                const toolbar = document.getElementById('a11y-toolbar');
+                if (!toolbar) return;
+                const collapsed = toolbar.classList.toggle('collapsed');
+                const prefs = readA11y(); prefs.collapsed = collapsed; writeA11y(prefs);
+                const btn = document.getElementById('a11y-toggle'); if (btn) btn.setAttribute('aria-expanded', String(!collapsed));
+            };
+            const floatBtn = document.getElementById('a11y-toggle');
+            if (floatBtn) floatBtn.addEventListener('click', toggleToolbar);
+            // Alt+M to toggle
+            window.addEventListener('keydown', (ev) => {
+                if ((ev.altKey || ev.metaKey) && (ev.key === 'm' || ev.key === 'M')) {
+                    ev.preventDefault(); toggleToolbar();
+                }
+            });
 });
