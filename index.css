@@ -102,3 +102,31 @@ body {
 #client-view .card * {
   color: #ffffff !important;
 }
+
+/* Admin view: garantir texto branco para melhor contraste */
+#admin-view,
+#admin-view * {
+  color: #ffffff !important;
+}
+
+/* Tabela de agendamentos: células e cabeçalho em branco */
+#admin-view table thead th,
+#admin-view table tbody td {
+  color: #ffffff !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Botões dentro do admin: ajustar cores de rótulos quando necessário */
+#admin-view .btn,
+#admin-view .btn * {
+  color: #ffffff !important;
+}
+
+/* Ajuste adicional para badges/links 'Ver Comprovante' para garantir leitura */
+#admin-view .btn-outline-info,
+#admin-view .btn-outline-primary,
+#admin-view .btn-outline-warning,
+#admin-view .btn-outline-danger,
+#admin-view .btn-outline-success {
+  color: #ffffff !important;
+}
