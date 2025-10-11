@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'enceramento', nome: 'Enceramento', preco: 40.00, duration: 90 },
     { id: 'lavagem-motor', nome: 'Lavagem do Motor', preco: 30.00, duration: 45 }
   ];
-  let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    // Appointments are authoritative on the server. Do not load or persist them in localStorage.
+    let appointments = [];
     // default available times are generated every 30 minutes between 08:00 and 17:00
     const AVAILABLE_TIMES = [];
     const genTimes = () => {
@@ -72,13 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 3. FUNÇÕES DE UTILIDADE E LÓGICA DE NEGÓCIO ---
   
-  /**
-   * Salva os dados de serviços e agendamentos no localStorage.
-   */
-  const saveData = () => {
-    localStorage.setItem('services', JSON.stringify(services));
-    localStorage.setItem('appointments', JSON.stringify(appointments));
-  };
+    /**
+     * Persiste apenas os serviços no localStorage.
+     * Observação: os agendamentos agora são mantidos no servidor (fonte de verdade).
+     */
+    const saveData = () => {
+        localStorage.setItem('services', JSON.stringify(services));
+        // Intencional: não persistir 'appointments' localmente para forçar uso do servidor
+    };
   
    /**
    * Exibe uma mensagem de feedback (alerta) para o usuário.
@@ -135,10 +137,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- 4. FUNÇÕES DE RENDERIZAÇÃO (ATUALIZAÇÃO DA INTERFACE) ---
 
   const renderClientView = () => {
-    populateServiceSelect();
-    updateAvailableTimes();
+        populateServiceSelect();
+        // Refresh public appointments (server) to compute availability, then update UI
+        fetchPublicAppointments().then(() => updateAvailableTimes()).catch(() => updateAvailableTimes());
     // renderClientAppointments foi removido
   };
+
+    // On initial load attempt to fetch public appointments so views reflect server state
+    fetchPublicAppointments().catch(() => {});
   
   const renderAdminView = (activeTab = 'appointments') => {
       // If we have a token, try fetching server-side appointments
@@ -210,8 +216,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const selectedDate = datePicker.value;
       const displayDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR');
       availableTimesTitle.textContent = `Horários para ${displayDate}`;
+      // Prefer server-side public appointments when available
+      const sourceAppointments = publicAppointments ? publicAppointments : appointments;
       const bookedSlots = new Set(
-          appointments.filter(a => a.data === selectedDate && a.status !== 'Cancelado').map(a => a.horario)
+          (sourceAppointments || []).filter(a => a.data === selectedDate && a.status !== 'Cancelado').map(a => a.horario)
       );
       availableTimesGrid.innerHTML = '';
       timeSelect.innerHTML = '<option value="">Selecione um horário</option>';
@@ -336,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   });
 
-  appointmentForm.addEventListener('submit', (e) => {
+    appointmentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
         const comprovanteInput = document.getElementById('comprovante');
         const file = comprovanteInput && comprovanteInput.files && comprovanteInput.files[0];
@@ -390,17 +398,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     return null;
                 }
 
-                // For server errors (5xx) treat as transient and throw to trigger fallback below
+                // For server errors (5xx) treat as transient and show error to user.
                 throw new Error(serverMessage);
             }
             return res.json();
-        }).then(created => {
+    }).then(async created => {
             if (!created) return; // handled earlier (client error)
             // Server returns the created appointment metadata (id, comprovantePath, status...)
             // If server returned comprovantePath, normalize to use that; otherwise fallback to data URL
             if (created.comprovantePath) created.comprovantePath = created.comprovantePath.replace(/\\/g, '/');
-            appointments.push(created);
-            saveData();
+            // Refresh public appointments from server so availability reflects server state
+            await fetchPublicAppointments();
             showAnnouncement(`Agendamento para ${created.nomeCliente} realizado com sucesso (enviado ao servidor).`);
             appointmentForm.reset();
             comprovanteInput.value = '';
@@ -411,36 +419,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateAvailableTimes();
             renderAppointmentsTable();
         }).catch(err => {
-            // Network/server error: fallback to localStorage (previous behavior)
-            console.warn('Falha ao enviar para o servidor, salvando localmente:', err);
-            showAnnouncement(`Servidor indisponível: ${err.message || 'Tente novamente mais tarde.'}`, 'warning');
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const newAppointment = { ...baseData, comprovanteDataUrl: reader.result, status: 'Reservado', comprovantePath: null };
-                    appointments.push(newAppointment);
-                    saveData();
-                    showAnnouncement(`Agendamento salvo localmente (servidor indisponível).`,'warning');
-                    appointmentForm.reset();
-                    comprovanteInput.value = '';
-                    const compStatusEl = document.getElementById('comprovante-status');
-                    if (compStatusEl) compStatusEl.textContent = '(anexado localmente)';
-                    completionTimeAlert.classList.add('d-none');
-                    updateAvailableTimes();
-                    renderAppointmentsTable();
-                };
-                reader.readAsDataURL(file);
-            } else {
-                appointments.push(baseData);
-                saveData();
-                showAnnouncement(`Agendamento salvo localmente (servidor indisponível).`,'warning');
-                appointmentForm.reset();
-                const compStatusEl = document.getElementById('comprovante-status');
-                if (compStatusEl) compStatusEl.textContent = '';
-                completionTimeAlert.classList.add('d-none');
-                updateAvailableTimes();
-                renderAppointmentsTable();
-            }
+            // Network/server error: do NOT save locally. Keep form state so user can retry.
+            console.warn('Falha ao enviar para o servidor:', err);
+            showAnnouncement(`Erro ao conectar ao servidor: ${err.message || 'Tente novamente mais tarde.'}`, 'danger');
         });
   });
 
@@ -464,10 +445,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const action = target.dataset.action;
       const id = target.dataset.id;
       if (!action) return;
-      const list = (adminToken && serverAppointments) ? serverAppointments : appointments;
+    const list = (adminToken && serverAppointments) ? serverAppointments : (publicAppointments ? publicAppointments : appointments);
       const app = list.find(a => String(a.id) === String(id));
 
-      if (action === 'view-proof') {
+    if (action === 'view-proof') {
           // Prefer direct uploads static URL when available (convenience), then try protected endpoint, then fallback to data URL.
           const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
           if (app && app.comprovantePath) {
@@ -499,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
               showAnnouncement('Não há comprovante disponível para este agendamento.','warning');
           }
-      } else if (action === 'notify') {
+    } else if (action === 'notify') {
           // Guarda o agendamento atual e prepara a mensagem padrão
           currentNotificationAppointment = app;
           const serviceName = services.find(s => s.id === app.servicoId)?.nome || 'serviço';
@@ -511,32 +492,34 @@ document.addEventListener('DOMContentLoaded', () => {
           whatsAppModal.show();
 
       } else if (action === 'complete') {
-          if (adminToken && app && app.id) {
-              // mark locally for serverless entries, or call server to update if desired
-              app.status = 'Concluído';
-              showAnnouncement('Agendamento marcado como Concluído.');
-          } else if (app) {
-              app.status = 'Concluído';
-              showAnnouncement('Agendamento marcado como Concluído.');
+          // Marking as completed requires admin privileges and server-side update.
+          if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
+          // Reuse confirm endpoint for admins (sets Confirmado). If you need a separate 'Concluído' state, add a server endpoint.
+          try {
+              const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+              const res = await fetch(`${backend}/api/appointments/${id}/confirm`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
+              if (!res.ok) { showAnnouncement('Falha ao atualizar status no servidor.','danger'); return; }
+              showAnnouncement('Agendamento atualizado no servidor.');
+              await fetchAdminAppointments();
+          } catch (err) {
+              showAnnouncement('Erro ao comunicar com o servidor.','danger');
           }
+          
       } else if (action === 'keep') {
-          if (adminToken) {
-              // call confirm endpoint
-              try {
-                  const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
-                  const res = await fetch(`${backend}/api/appointments/${id}/confirm`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
-                  if (!res.ok) { showAnnouncement('Falha ao confirmar agendamento.','danger'); return; }
-                  showAnnouncement('Agendamento confirmado no servidor.');
-                  await fetchAdminAppointments();
-              } catch (err) {
-                  showAnnouncement('Erro ao confirmar agendamento.','danger');
-              }
-          } else if (app) {
-              app.status = 'Confirmado';
-              showAnnouncement('Agendamento mantido/confirmado.');
+          if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
+          try {
+              const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+              const res = await fetch(`${backend}/api/appointments/${id}/confirm`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
+              if (!res.ok) { showAnnouncement('Falha ao confirmar agendamento.','danger'); return; }
+              showAnnouncement('Agendamento confirmado no servidor.');
+              await fetchAdminAppointments();
+          } catch (err) {
+              showAnnouncement('Erro ao confirmar agendamento.','danger');
           }
       } else if (action === 'pendent') {
-          if (app) { app.status = 'Pendente'; showAnnouncement('Agendamento marcado como Pendente.'); }
+          // Setting to 'Pendente' requires admin privileges
+          if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
+          showAnnouncement('Para marcar como Pendente, use o painel do administrador.');
       } else if (action === 'delete') {
           if (confirm(`Tem certeza que deseja excluir o agendamento de ${app.nomeCliente}?`)) {
               if (adminToken) {
@@ -550,8 +533,8 @@ document.addEventListener('DOMContentLoaded', () => {
                       showAnnouncement('Erro ao excluir agendamento.','danger');
                   }
               } else {
-                  appointments = appointments.filter(a => a.id !== id);
-                  showAnnouncement('Agendamento excluído com sucesso.', 'danger');
+                  showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning');
+                  return;
               }
           }
       }
