@@ -618,8 +618,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Aggregate appointments for the given range and reference date
-    function aggregateAppointments(range, referenceDateStr) {
-        const ref = new Date(referenceDateStr + 'T00:00:00');
+        function aggregateAppointments(range, referenceDateStr, sourceAppointments) {
+            const ref = new Date(referenceDateStr + 'T00:00:00');
         const map = new Map();
         const revenueMap = new Map();
         const labels = [];
@@ -627,16 +627,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Helper to push label and init maps
         const pushLabel = (label) => { labels.push(label); map.set(label, 0); revenueMap.set(label, 0); };
 
-        if (range === 'day') {
+            if (range === 'day') {
             const dayLabel = ref.toLocaleDateString('pt-BR');
             pushLabel(dayLabel);
-            appointments.forEach(a => {
-                if (a.data === referenceDateStr && a.status !== 'Cancelado') {
-                    map.set(dayLabel, map.get(dayLabel) + 1);
-                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                    revenueMap.set(dayLabel, revenueMap.get(dayLabel) + price);
-                }
-            });
+                (sourceAppointments || []).forEach(a => {
+                    if (a.data === referenceDateStr && a.status !== 'Cancelado') {
+                        map.set(dayLabel, map.get(dayLabel) + 1);
+                        const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                        revenueMap.set(dayLabel, revenueMap.get(dayLabel) + price);
+                    }
+                });
         } else if (range === 'week') {
             // compute week start (Monday) and labels for 7 days
             const start = new Date(ref);
@@ -649,16 +649,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const label = d.toLocaleDateString('pt-BR');
                 pushLabel(label);
             }
-            appointments.forEach(a => {
-                if (a.status === 'Cancelado') return;
-                const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
-                if (idx >= 0) {
-                    const l = labels[idx];
-                    map.set(l, map.get(l) + 1);
-                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                    revenueMap.set(l, revenueMap.get(l) + price);
-                }
-            });
+                    (sourceAppointments || []).forEach(a => {
+                        if (a.status === 'Cancelado') return;
+                        const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
+                        if (idx >= 0) {
+                            const l = labels[idx];
+                            map.set(l, map.get(l) + 1);
+                            const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                            revenueMap.set(l, revenueMap.get(l) + price);
+                        }
+                    });
         } else if (range === 'month') {
             const year = ref.getFullYear();
             const month = ref.getMonth();
@@ -668,16 +668,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const label = date.toLocaleDateString('pt-BR');
                 pushLabel(label);
             }
-            appointments.forEach(a => {
-                if (a.status === 'Cancelado') return;
-                const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
-                if (idx >= 0) {
-                    const l = labels[idx];
-                    map.set(l, map.get(l) + 1);
-                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                    revenueMap.set(l, revenueMap.get(l) + price);
-                }
-            });
+                    (sourceAppointments || []).forEach(a => {
+                        if (a.status === 'Cancelado') return;
+                        const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
+                        if (idx >= 0) {
+                            const l = labels[idx];
+                            map.set(l, map.get(l) + 1);
+                            const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                            revenueMap.set(l, revenueMap.get(l) + price);
+                        }
+                    });
         } else if (range === 'year') {
             const year = ref.getFullYear();
             for (let m = 0; m < 12; m++) {
@@ -685,16 +685,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const label = d.toLocaleString('pt-BR', { month: 'short' });
                 pushLabel(label);
             }
-            appointments.forEach(a => {
-                if (a.status === 'Cancelado') return;
-                const dt = new Date(a.data + 'T00:00:00');
-                if (dt.getFullYear() === year) {
-                    const label = new Date(dt.getFullYear(), dt.getMonth(), 1).toLocaleString('pt-BR', { month: 'short' });
-                    map.set(label, (map.get(label) || 0) + 1);
-                    const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                    revenueMap.set(label, (revenueMap.get(label) || 0) + price);
-                }
-            });
+                    (sourceAppointments || []).forEach(a => {
+                        if (a.status === 'Cancelado') return;
+                        const dt = new Date(a.data + 'T00:00:00');
+                        if (dt.getFullYear() === year) {
+                            const label = new Date(dt.getFullYear(), dt.getMonth(), 1).toLocaleString('pt-BR', { month: 'short' });
+                            map.set(label, (map.get(label) || 0) + 1);
+                            const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
+                            revenueMap.set(label, (revenueMap.get(label) || 0) + price);
+                        }
+                    });
         }
 
         return { labels, counts: labels.map(l => map.get(l) || 0), revenue: labels.map(l => revenueMap.get(l) || 0) };
@@ -726,14 +726,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function renderStats() {
         const range = statsRange.value || 'month';
         const refDate = statsDate.value || getTodayString();
-        const data = aggregateAppointments(range, refDate);
+            // prefer serverAppointments when available (admin)
+            const sourceAppointments = (adminToken && serverAppointments) ? serverAppointments : appointments;
+            const data = aggregateAppointments(range, refDate, sourceAppointments);
 
         // destroy previous chart if exists
         if (statsChart) { statsChart.destroy(); statsChart = null; }
 
         // prepare datasets: counts and revenue
         const ctx = statsChartEl.getContext('2d');
-        statsChart = new Chart(ctx, {
+            statsChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: data.labels,
@@ -742,14 +744,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     { label: 'Faturamento (R$)', data: data.revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1' }
                 ]
             },
-            options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                scales: {
-                    y: { type: 'linear', position: 'left', title: { display: true, text: 'Veículos' } },
-                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'R$' } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        tooltip: { mode: 'index', intersect: false },
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+                        y: { type: 'linear', position: 'left', title: { display: true, text: 'Veículos' } },
+                        y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'R$' } }
+                    }
                 }
-            }
         });
 
         // fetch weather for date range (simple bounding: use first and last label dates when possible)
@@ -758,7 +766,9 @@ document.addEventListener('DOMContentLoaded', () => {
             start = data.labels[0];
             end = data.labels[data.labels.length - 1];
         }
-        const weather = await fetchWeatherSummary(start, end);
+        const lat = parseFloat((document.getElementById('stats-lat') && document.getElementById('stats-lat').value) || -23.55);
+        const lon = parseFloat((document.getElementById('stats-lon') && document.getElementById('stats-lon').value) || -46.63);
+        const weather = await fetchWeatherSummary(start, end, lat, lon);
         if (weather && weather.length) {
             statsWeatherEl.textContent = 'Previsão meteorológica: ' + weather.map(w => `${w.date}: ${w.label}`).join(' | ');
         } else {
@@ -767,7 +777,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // wire refresh
-    if (statsRefresh) statsRefresh.addEventListener('click', () => renderStats());
+        if (statsRefresh) statsRefresh.addEventListener('click', () => renderStats());
+        // CSV export
+        const statsExportBtn = document.getElementById('stats-export');
+        if (statsExportBtn) statsExportBtn.addEventListener('click', () => {
+            if (!statsChart) return showAnnouncement('Gere o gráfico antes de exportar.','warning');
+            const labels = statsChart.data.labels;
+            const counts = statsChart.data.datasets[0].data;
+            const revenue = statsChart.data.datasets[1].data;
+            let csv = 'label,veiculos,faturamento\n';
+            for (let i=0;i<labels.length;i++) csv += `${labels[i]},${counts[i]||0},${revenue[i]||0}\n`;
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'estatisticas.csv'; document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(()=>URL.revokeObjectURL(url), 1000);
+        });
 
   
   serviceForm.addEventListener('submit', (e) => {
