@@ -1,7 +1,7 @@
 // Uses global fetch provided by Node 18+
 (async ()=>{
   try {
-    const cep = '01001000';
+    const cep = process.argv[2] || '01001000';
     const vres = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const vj = await vres.json();
     console.log('ViaCEP:', vj.localidade, vj.uf);

@@ -879,7 +879,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-        const weather = await fetchWeatherSummary(start, end, lat, lon);
+        let weather = null;
+        try {
+            weather = await fetchWeatherSummary(start, end, lat, lon);
+        } catch (err) {
+            console.error('Erro ao buscar weather:', err);
+            weather = null;
+        }
         if (weather && weather.length) {
             // show icons (SVG) + localized date labels
             const parts = weather.map(w => {
@@ -890,7 +896,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             statsWeatherEl.innerHTML = '<div class="small text-secondary">Previsão meteorológica:</div><div class="mt-1">' + parts.join(' | ') + '</div>';
         } else {
-            statsWeatherEl.textContent = 'Dados meteorológicos indisponíveis.';
+            // Provide more information for debugging: attempted coordinates and any CEP feedback
+            const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+            const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';
+            statsWeatherEl.textContent = `Dados meteorológicos indisponíveis. ${attempted}${cepMsg}`;
+            console.debug('Weather unavailable for', { start, end, lat, lon, cepFeedback: cepFeedback && cepFeedback.textContent });
         }
     }
 
