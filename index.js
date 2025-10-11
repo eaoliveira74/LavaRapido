@@ -1042,21 +1042,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Accessibility toolbar wiring ---
             const A11Y_KEY = 'a11yPreferences_v1';
-            const a11yDefaults = { contrast: false, largeText: false, reducedMotion: false };
+            const a11yDefaults = { contrast: false, largeText: false };
             const readA11y = () => { try { return JSON.parse(localStorage.getItem(A11Y_KEY) || JSON.stringify(a11yDefaults)); } catch(e){ return a11yDefaults; } };
             const writeA11y = (o) => { try { localStorage.setItem(A11Y_KEY, JSON.stringify(o)); } catch(e){} };
             const applyA11y = (prefs) => {
                 const b = document.body;
                 b.classList.toggle('a11y-high-contrast', !!prefs.contrast);
                 b.classList.toggle('a11y-large-text', !!prefs.largeText);
-                b.classList.toggle('a11y-reduced-motion', !!prefs.reducedMotion);
+            b.classList.toggle('a11y-reduced-motion', false);
                 // update aria-checked attributes on inputs if present
                 const ic = document.getElementById('a11y-contrast');
                 const il = document.getElementById('a11y-large-text');
-                const im = document.getElementById('a11y-reduced-motion');
-                if (ic) { ic.checked = !!prefs.contrast; ic.setAttribute('aria-checked', String(!!prefs.contrast)); }
-                if (il) { il.checked = !!prefs.largeText; il.setAttribute('aria-checked', String(!!prefs.largeText)); }
-                if (im) { im.checked = !!prefs.reducedMotion; im.setAttribute('aria-checked', String(!!prefs.reducedMotion)); }
+            if (ic) { ic.checked = !!prefs.contrast; ic.setAttribute('aria-checked', String(!!prefs.contrast)); }
+            if (il) { il.checked = !!prefs.largeText; il.setAttribute('aria-checked', String(!!prefs.largeText)); }
             };
 
             // Initialize toolbar from saved prefs
@@ -1068,16 +1066,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Wire toggle listeners
             const elContrast = document.getElementById('a11y-contrast');
             const elLargeText = document.getElementById('a11y-large-text');
-            const elReduced = document.getElementById('a11y-reduced-motion');
+            // reduced-motion control removed from markup
             const elReset = document.getElementById('a11y-reset');
 
             const onChange = () => {
-                const prefs = { contrast: !!(elContrast && elContrast.checked), largeText: !!(elLargeText && elLargeText.checked), reducedMotion: !!(elReduced && elReduced.checked) };
+                const prefs = { contrast: !!(elContrast && elContrast.checked), largeText: !!(elLargeText && elLargeText.checked) };
                 applyA11y(prefs);
                 writeA11y(prefs);
             };
             if (elContrast) elContrast.addEventListener('change', onChange);
             if (elLargeText) elLargeText.addEventListener('change', onChange);
-            if (elReduced) elReduced.addEventListener('change', onChange);
+            // no reduced-motion listener (control removed)
             if (elReset) elReset.addEventListener('click', () => { writeA11y(a11yDefaults); applyA11y(a11yDefaults); showAnnouncement('Preferências de acessibilidade restauradas.','success'); });
 });
