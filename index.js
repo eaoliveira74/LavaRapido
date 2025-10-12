@@ -185,6 +185,13 @@ function init() {
         try {
             const res = await fetch(`${backend}/api/appointments`, { headers: { Authorization: `Bearer ${adminToken}` } });
             if (!res.ok) {
+                // If unauthorized, clear stale token and prompt re-login
+                if (res.status === 401 || res.status === 403) {
+                    setAdminToken(null);
+                    serverAppointments = null;
+                    showAnnouncement('Sessão de administrador expirada ou inválida. Faça login novamente.', 'warning');
+                    return;
+                }
                 serverAppointments = null;
                 const txt = await res.text().catch(()=>'');
                 showAnnouncement(`Falha ao carregar agendamentos: ${txt || res.status}`,'danger');
