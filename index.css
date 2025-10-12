@@ -155,15 +155,21 @@ body {
 #available-times-grid .slot.reserved {
   background: #fecaca; /* light red */
   color: #000000;
-  border: 2px solid #ef4444 !important;
+  border: 2px solid #ef4444 !important; /* red */
   cursor: not-allowed;
 }
 #available-times-grid .slot.unavailable {
-  background: #fecaca; /* light red */
+  background: #ffedd5; /* light orange */
   color: #000000;
-  border: 2px solid #ef4444 !important; /* red border for unavailable */
+  border: 2px solid #f97316 !important; /* orange */
   cursor: not-allowed;
   opacity: 0.95;
+}
+
+/* If a slot is both reserved and unavailable, keep it red (reserved wins) */
+#available-times-grid .slot.reserved.unavailable {
+  background: #fecaca !important;
+  border-color: #ef4444 !important;
 }
 .slot .slot-label { font-size: 0.95rem; }
 
