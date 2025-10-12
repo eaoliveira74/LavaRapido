@@ -295,6 +295,27 @@
               <label for="whatsapp-message" class="form-label">Mensagem:</label>
               <textarea class="form-control" id="whatsapp-message" rows="5"></textarea>
             </div>
+            <div class="mb-2">
+              <label for="whatsapp-template" class="form-label small">Modelo da mensagem:</label>
+              <select id="whatsapp-template" class="form-select form-select-sm">
+                <option value="conclusao" selected>Conclusão da lavagem</option>
+                <option value="confirmacao">Confirmação de agendamento</option>
+              </select>
+            </div>
+            <div class="d-flex flex-column gap-1">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="whatsapp-include-price" checked>
+                <label class="form-check-label small" for="whatsapp-include-price">Incluir valor do serviço</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="whatsapp-include-review" checked>
+                <label class="form-check-label small" for="whatsapp-include-review">Incluir link para avaliação</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="whatsapp-include-location">
+                <label class="form-check-label small" for="whatsapp-include-location">Incluir localização</label>
+              </div>
+            </div>
           </div>
           <div class="modal-footer border-0">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

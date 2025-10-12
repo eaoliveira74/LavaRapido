@@ -189,6 +189,18 @@ export default {
       return ok(row);
     }
 
+    // Mark appointment as completed (admin)
+    if (path.match(/^\/api\/appointments\/.+\/complete$/) && request.method === 'POST') {
+      const admin = await requireAdmin();
+      if (!admin) return bad('unauthorized', 401);
+      const id = path.split('/')[3];
+      await env.DB.prepare(`UPDATE appointments SET status = 'Concluído' WHERE id = ?`).bind(id).run();
+      const row = await env.DB.prepare(`SELECT id, nome_cliente as nomeCliente, telefone_cliente as telefoneCliente, servico_id as servicoId, horario, data, observacoes, status, comprovante_key as comprovanteKey, created_at as createdAt FROM appointments WHERE id = ?`).bind(id).first();
+      if (!row) return bad('not found', 404);
+      row.comprovantePath = row.comprovanteKey ? ('/uploads/' + row.comprovanteKey) : null;
+      return ok(row);
+    }
+
     // Delete appointment (admin)
     if (path.match(/^\/api\/appointments\/.+$/) && request.method === 'DELETE') {
       const admin = await requireAdmin();

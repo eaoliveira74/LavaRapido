@@ -69,6 +69,69 @@ function init() {
   const whatsAppClientName = document.getElementById('whatsapp-client-name');
   const whatsAppMessageTextarea = document.getElementById('whatsapp-message');
   const sendWhatsAppBtn = document.getElementById('send-whatsapp-btn');
+  // WhatsApp modal extras
+  const whatsAppTemplateSel = document.getElementById('whatsapp-template');
+  const whatsAppIncludePrice = document.getElementById('whatsapp-include-price');
+  const whatsAppIncludeReview = document.getElementById('whatsapp-include-review');
+  const whatsAppIncludeLocation = document.getElementById('whatsapp-include-location');
+
+  // Optional env-configurable URLs
+  const getReviewUrl = () => {
+      try {
+          if (typeof window !== 'undefined' && window.__REVIEW_URL__) return window.__REVIEW_URL__;
+      } catch(_) {}
+      try {
+          if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_REVIEW_URL) return import.meta.env.VITE_REVIEW_URL;
+      } catch(_) {}
+      return '';
+  };
+  const getLocationUrl = () => {
+      try {
+          if (typeof window !== 'undefined' && window.__LOCATION_URL__) return window.__LOCATION_URL__;
+      } catch(_) {}
+      try {
+          if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_LOCATION_URL) return import.meta.env.VITE_LOCATION_URL;
+      } catch(_) {}
+      return '';
+  };
+
+  // Build WhatsApp message from controls
+  function buildWhatsappMessage(app) {
+      if (!app) return '';
+      const serviceName = services.find(s => s.id === app.servicoId)?.nome || 'lavagem';
+      const dateStr = new Date(app.data + 'T00:00:00').toLocaleDateString('pt-BR');
+      const hour = app.horario;
+      const template = (whatsAppTemplateSel && whatsAppTemplateSel.value) || 'conclusao';
+      let parts = [];
+      if (template === 'confirmacao') {
+          parts.push(`Olá ${app.nomeCliente}, seu agendamento de ${serviceName} foi CONFIRMADO para ${dateStr} às ${hour}.`);
+      } else { // conclusao
+          parts.push(`Olá ${app.nomeCliente}, informamos que a ${serviceName} do seu veículo foi CONCLUÍDA em ${dateStr} às ${hour}.`);
+      }
+      // Include price
+      if (whatsAppIncludePrice && whatsAppIncludePrice.checked) {
+          const price = services.find(s => s.id === app.servicoId)?.preco;
+          if (typeof price === 'number') parts.push(`Valor: R$ ${price.toFixed(2)}.`);
+      }
+      // Include review link
+      if (whatsAppIncludeReview && whatsAppIncludeReview.checked) {
+          const link = getReviewUrl();
+          if (link) parts.push(`Avalie nosso atendimento: ${link}`);
+      }
+      // Include location
+      if (whatsAppIncludeLocation && whatsAppIncludeLocation.checked) {
+          const link = getLocationUrl();
+          if (link) parts.push(`Nossa localização: ${link}`);
+      }
+      parts.push('Agradecemos a preferência! Qualquer dúvida, estamos à disposição.');
+      return parts.join(' ');
+  }
+
+  function refreshWhatsappPreview() {
+      if (!currentNotificationAppointment) return;
+      const msg = buildWhatsappMessage(currentNotificationAppointment);
+      if (whatsAppMessageTextarea) whatsAppMessageTextarea.value = msg;
+  }
 
 
   // --- 3. FUNÇÕES DE UTILIDADE E LÓGICA DE NEGÓCIO ---
@@ -601,29 +664,31 @@ function init() {
     } else if (action === 'notify') {
           // Guarda o agendamento atual e prepara a mensagem padrão
           currentNotificationAppointment = app;
-          const serviceName = services.find(s => s.id === app.servicoId)?.nome || 'lavagem';
-          const message = `Olá ${app.nomeCliente}, informamos que a ${serviceName} do seu veículo foi CONCLUÍDA em ${new Date(app.data + 'T00:00:00').toLocaleDateString('pt-BR')} às ${app.horario}. Agradecemos a preferência! Qualquer dúvida, estamos à disposição.`;
-          
-          // Preenche os dados no modal e o exibe
+        // Preenche os dados no modal e define defaults
           whatsAppClientName.textContent = app.nomeCliente;
-          whatsAppMessageTextarea.value = message;
+        if (whatsAppTemplateSel) whatsAppTemplateSel.value = 'conclusao';
+        if (whatsAppIncludePrice) whatsAppIncludePrice.checked = true;
+        if (whatsAppIncludeReview) whatsAppIncludeReview.checked = true;
+        if (whatsAppIncludeLocation) whatsAppIncludeLocation.checked = false;
+        // Render preview based on controls
+        refreshWhatsappPreview();
           whatsAppModal.show();
 
       } else if (action === 'complete') {
-          // Marking as completed requires admin privileges and server-side update.
+          // Marcar como Concluído
           if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
-          // Reuse confirm endpoint for admins (sets Confirmado). If you need a separate 'Concluído' state, add a server endpoint.
           try {
               const backend = getBackendBase();
-              const res = await fetch(`${backend}/api/appointments/${id}/confirm`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
-              if (!res.ok) { showAnnouncement('Falha ao atualizar status no servidor.','danger'); return; }
-              showAnnouncement('Agendamento atualizado no servidor.');
+              const res = await fetch(`${backend}/api/appointments/${id}/complete`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
+              if (!res.ok) { showAnnouncement('Falha ao marcar como Concluído.','danger'); return; }
+              showAnnouncement('Status alterado para Concluído.');
               await fetchAdminAppointments();
           } catch (err) {
               showAnnouncement('Erro ao comunicar com o servidor.','danger');
           }
           
       } else if (action === 'keep') {
+          // Confirmar e abrir WhatsApp com mensagem de confirmação
           if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
           try {
               const backend = getBackendBase();
@@ -631,6 +696,16 @@ function init() {
               if (!res.ok) { showAnnouncement('Falha ao confirmar agendamento.','danger'); return; }
               showAnnouncement('Agendamento confirmado no servidor.');
               await fetchAdminAppointments();
+              // Abrir o modal do WhatsApp já no modelo de confirmação
+              const confirmed = (adminToken && serverAppointments) ? serverAppointments.find(a => String(a.id) === String(id)) : app;
+              currentNotificationAppointment = confirmed || app;
+              if (whatsAppTemplateSel) whatsAppTemplateSel.value = 'confirmacao';
+              if (whatsAppIncludePrice) whatsAppIncludePrice.checked = true;
+              if (whatsAppIncludeReview) whatsAppIncludeReview.checked = true;
+              if (whatsAppIncludeLocation) whatsAppIncludeLocation.checked = false;
+              if (whatsAppClientName) whatsAppClientName.textContent = currentNotificationAppointment.nomeCliente || '';
+              refreshWhatsappPreview();
+              whatsAppModal.show();
           } catch (err) {
               showAnnouncement('Erro ao confirmar agendamento.','danger');
           }
@@ -667,7 +742,7 @@ function init() {
   sendWhatsAppBtn.addEventListener('click', () => {
       if (!currentNotificationAppointment) return;
 
-      const message = whatsAppMessageTextarea.value;
+      const message = whatsAppMessageTextarea.value || buildWhatsappMessage(currentNotificationAppointment);
       const phone = currentNotificationAppointment.telefoneCliente.replace(/\D/g, '');
       
       // Abre o WhatsApp em uma nova aba com a mensagem preenchida
@@ -678,6 +753,12 @@ function init() {
       whatsAppModal.hide();
       currentNotificationAppointment = null;
   });
+
+    // Update preview when controls change
+    if (whatsAppTemplateSel) whatsAppTemplateSel.addEventListener('change', refreshWhatsappPreview);
+    if (whatsAppIncludePrice) whatsAppIncludePrice.addEventListener('change', refreshWhatsappPreview);
+    if (whatsAppIncludeReview) whatsAppIncludeReview.addEventListener('change', refreshWhatsappPreview);
+    if (whatsAppIncludeLocation) whatsAppIncludeLocation.addEventListener('change', refreshWhatsappPreview);
 
   servicesList.addEventListener('click', (e) => {
       const target = e.target;
