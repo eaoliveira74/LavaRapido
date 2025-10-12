@@ -142,5 +142,29 @@
     "status": "Confirmado",
     "comprovantePath": "uploads/1760199771250-49944102.png",
     "createdAt": "2025-10-11T16:22:51.254Z"
+  },
+  {
+    "id": "mgna7mcr-9ojz",
+    "nomeCliente": "Teste Playwright",
+    "telefoneCliente": "(11) 99999-0000",
+    "servicoId": "lavagem-simples",
+    "horario": "08:00",
+    "data": "2025-10-12",
+    "observacoes": "Agendamento automatizado",
+    "status": "Pendente",
+    "comprovantePath": null,
+    "createdAt": "2025-10-12T05:46:41.259Z"
+  },
+  {
+    "id": "mgna9bon-j45c",
+    "nomeCliente": "Edinaldo",
+    "telefoneCliente": "11942347727",
+    "servicoId": "lavagem-simples",
+    "horario": "09:00",
+    "data": "2025-10-12",
+    "observacoes": "",
+    "status": "Reservado",
+    "comprovantePath": "uploads/1760248080740-364936472.pdf",
+    "createdAt": "2025-10-12T05:48:00.744Z"
   }
 ]

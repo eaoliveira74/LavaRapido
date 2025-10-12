@@ -1,7 +1,7 @@
 // O objeto 'bootstrap' está disponível globalmente pois foi carregado via CDN no index.html.
 
-// Espera o DOM estar completamente carregado para executar o script
-document.addEventListener('DOMContentLoaded', () => {
+// Wrap initialization in a named function so it runs whether DOMContentLoaded already fired
+function init() {
 
   // --- 1. ESTADO DA APLICAÇÃO ---
   // Aqui guardamos todos os dados que a aplicação utiliza.
@@ -92,6 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 5000);
   };
 
+    // Resolve base URL do backend a partir de window.__BACKEND_URL__ ou Vite env
+    const getBackendBase = () => {
+        try {
+            if (typeof window !== 'undefined' && window.__BACKEND_URL__) return window.__BACKEND_URL__;
+        } catch (_) {}
+        try {
+            if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) {
+                return import.meta.env.VITE_BACKEND_URL;
+            }
+        } catch (_) {}
+        return 'http://localhost:4000';
+    };
+
     // Map server-side error messages to user-friendly text
     const friendlyError = (serverMsg) => {
         if (!serverMsg) return 'Ocorreu um erro. Tente novamente.';
@@ -143,8 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // renderClientAppointments foi removido
   };
 
-    // On initial load attempt to fetch public appointments so views reflect server state
-    fetchPublicAppointments().catch(() => {});
+    // (adiado) -- carregamento inicial de agendamentos públicos será feito após a definição da função
   
   const renderAdminView = (activeTab = 'appointments') => {
       // If we have a token, try fetching server-side appointments
@@ -168,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fetch appointments from backend (requires adminToken)
     const fetchAdminAppointments = async () => {
-        const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+    const backend = getBackendBase();
         if (!adminToken) return;
         try {
             const res = await fetch(`${backend}/api/appointments`, { headers: { Authorization: `Bearer ${adminToken}` } });
@@ -189,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch public appointments (no auth) so admin on desktop can see server-saved appointments made from mobile
     const fetchPublicAppointments = async () => {
         try {
-            const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+            const backend = getBackendBase();
             const res = await fetch(`${backend}/api/appointments/public`);
             if (!res.ok) {
                 publicAppointments = null;
@@ -370,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.append('observacoes', baseData.observacoes || '');
     if (file) form.append('comprovante', file, file.name);
 
-        const backendUrl = (window.__BACKEND_URL__ || 'http://localhost:4000') + '/api/appointments';
+    const backendUrl = getBackendBase() + '/api/appointments';
 
         fetch(backendUrl, {
             method: 'POST',
@@ -418,19 +430,34 @@ document.addEventListener('DOMContentLoaded', () => {
             completionTimeAlert.classList.add('d-none');
             updateAvailableTimes();
             renderAppointmentsTable();
-        }).catch(err => {
-            // Network/server error: do NOT save locally. Keep form state so user can retry.
-            console.warn('Falha ao enviar para o servidor:', err);
-            showAnnouncement(`Erro ao conectar ao servidor: ${err.message || 'Tente novamente mais tarde.'}`, 'danger');
+        }).catch(async err => {
+            // Network/server error: fallback local (modo offline) para não travar o fluxo do usuário
+            console.warn('Falha ao enviar para o servidor, aplicando fallback local:', err);
+            try {
+                const localA = { ...baseData };
+                // Se quiser preservar um rastro do arquivo, poderíamos ler como DataURL (cuidado com tamanho)
+                // Neste fallback, não vamos armazenar arquivo para evitar exceder memória/localStorage.
+                appointments.push(localA);
+                showAnnouncement('Sem conexão com o servidor: agendamento salvo localmente (offline).', 'warning');
+                appointmentForm.reset();
+                if (comprovanteInput) comprovanteInput.value = '';
+                const compStatusEl = document.getElementById('comprovante-status');
+                if (compStatusEl) compStatusEl.textContent = '';
+                completionTimeAlert.classList.add('d-none');
+                updateAvailableTimes();
+                renderAppointmentsTable();
+            } catch (e) {
+                showAnnouncement(`Erro ao conectar ao servidor: ${err.message || 'Tente novamente mais tarde.'}`, 'danger');
+            }
         });
   });
 
   // show selected file name and basic status next to the file input
-  const comprobanteInputEl = document.getElementById('comprovante');
-  if (comprobanteInputEl) {
-      comprobanteInputEl.addEventListener('change', () => {
+  const comprovanteInputEl = document.getElementById('comprovante');
+  if (comprovanteInputEl) {
+      comprovanteInputEl.addEventListener('change', () => {
           const statusEl = document.getElementById('comprovante-status');
-          const f = comprobanteInputEl.files && comprobanteInputEl.files[0];
+          const f = comprovanteInputEl.files && comprovanteInputEl.files[0];
           if (!statusEl) return;
           if (f) {
               statusEl.textContent = `${f.name} — arquivo selecionado`;
@@ -450,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (action === 'view-proof') {
           // Prefer direct uploads static URL when available (convenience), then try protected endpoint, then fallback to data URL.
-          const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+          const backend = getBackendBase();
           if (app && app.comprovantePath) {
               // try opening /uploads/<path> first
               try {
@@ -496,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
           // Reuse confirm endpoint for admins (sets Confirmado). If you need a separate 'Concluído' state, add a server endpoint.
           try {
-              const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+              const backend = getBackendBase();
               const res = await fetch(`${backend}/api/appointments/${id}/confirm`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
               if (!res.ok) { showAnnouncement('Falha ao atualizar status no servidor.','danger'); return; }
               showAnnouncement('Agendamento atualizado no servidor.');
@@ -508,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (action === 'keep') {
           if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
           try {
-              const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+              const backend = getBackendBase();
               const res = await fetch(`${backend}/api/appointments/${id}/confirm`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` } });
               if (!res.ok) { showAnnouncement('Falha ao confirmar agendamento.','danger'); return; }
               showAnnouncement('Agendamento confirmado no servidor.');
@@ -1342,4 +1369,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })();
             } catch (e) { console.warn('home forecast init failed', e); }
-});
+
+            // Expor funções após todas as dependências estarem definidas
+            try {
+                window.switchView = switchView;
+                window.fetchPublicAppointments = fetchPublicAppointments;
+            } catch (e) { /* ignore if not allowed in some contexts */ }
+            // Carregar agendamentos públicos inicialmente para refletir estado do servidor
+            try { (async () => { try { await fetchPublicAppointments(); } catch(_){} })(); } catch (e) { /* ignore network errors */ }
+            // Sinalizar que a app está pronta (para testes)
+            try { window.__APP_READY__ = true; } catch (e) {}
+}
+
+// Run init on DOMContentLoaded or immediately if already ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
