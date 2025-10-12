@@ -1022,10 +1022,23 @@ function init() {
             if (vc && vc.days) data = vc;
         } catch (e) { /* ignore */ }
         if (!data) {
-            // fallback to open-meteo summary (we'll massage it into same shape)
+            // fallback to open-meteo summary (massage into same shape with min/max/feels-like/precip)
             const om = await fetchWeatherSummary(start, tomorrow, lat, lon);
             if (om && om.length) {
-                data = { lat, lon, days: om.map(d => ({ date: d.date, conditionSimple: d.label, temp: d.temp || d.tempmax || null })) };
+                data = {
+                    lat,
+                    lon,
+                    days: om.map(d => ({
+                        date: d.date,
+                        conditionSimple: d.label,
+                        temp: null,
+                        tempmax: (d.tempmax != null ? d.tempmax : null),
+                        tempmin: (d.tempmin != null ? d.tempmin : null),
+                        feelslikemax: (d.feelslikemax != null ? d.feelslikemax : null),
+                        feelslikemin: (d.feelslikemin != null ? d.feelslikemin : null),
+                        precipprob: (d.precipprob != null ? d.precipprob : null)
+                    }))
+                };
             }
         }
         cache[key] = { ts: now, data };
