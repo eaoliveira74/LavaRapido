@@ -1064,13 +1064,14 @@ function init() {
                 const icon = (cond === 'Ensolarado') ? ICON_SUN : (cond === 'Nublado' ? ICON_CLOUD : (cond === 'Chuvoso' ? ICON_RAIN : ''));
                 const feelsMax = (day.feelslikemax != null) ? Math.round(day.feelslikemax) : null;
                 const feelsMin = (day.feelslikemin != null) ? Math.round(day.feelslikemin) : null;
+                const precipProb = (day.precipprob != null) ? Math.round(day.precipprob) : null;
                 el.innerHTML = `
                     <div class="title">${label}</div>
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <div class="icon">${icon}</div>
                         <div>
                             <div class="temp">Máx ${tmax}°C · Min ${tmin}°C</div>
-                            <div class="cond">${cond}${(feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : ''}</div>
+                            <div class="cond">${cond}${(feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : ''}${precipProb!=null ? ` · ${precipProb}% chuva` : ''}</div>
                         </div>
                     </div>
                 `;
@@ -1089,7 +1090,7 @@ function init() {
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
         // Open-Meteo daily summary for weathercode + feels_like approximation
         // Note: Open-Meteo "apparent_temperature_max/min" approximates sensação térmica
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
         try {
             const res = await fetch(url);
             if (!res.ok) return null;
@@ -1108,7 +1109,8 @@ function init() {
             const tmin = (j.daily && j.daily.temperature_2m_min) || [];
             const appMax = (j.daily && j.daily.apparent_temperature_max) || [];
             const appMin = (j.daily && j.daily.apparent_temperature_min) || [];
-            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null, feelslikemax: appMax[i] ?? null, feelslikemin: appMin[i] ?? null }));
+            const precipProb = (j.daily && j.daily.precipitation_probability_mean) || [];
+            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null, feelslikemax: appMax[i] ?? null, feelslikemin: appMin[i] ?? null, precipprob: precipProb[i] ?? null }));
         } catch (e) {
             return null;
         }
@@ -1333,8 +1335,10 @@ function init() {
                     const tmin = Math.round(today.tempmin != null ? today.tempmin : (today.temp != null ? today.temp : 0));
                     const feelsMax = (today.feelslikemax != null) ? Math.round(today.feelslikemax) : null;
                     const feelsMin = (today.feelslikemin != null) ? Math.round(today.feelslikemin) : null;
+                    const precipProb = (today.precipprob != null) ? Math.round(today.precipprob) : null;
                     const feelsTxt = (feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : '';
-                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — Máx ${tmax}°C · Min ${tmin}°C${feelsTxt}`;
+                    const precipTxt = precipProb!=null ? ` · ${precipProb}% chuva` : '';
+                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — Máx ${tmax}°C · Min ${tmin}°C${feelsTxt}${precipTxt}`;
                 }
             }
         } catch (e) { /* ignore */ }
