@@ -81,6 +81,23 @@
                 <div id="available-times-grid" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
                   <!-- Horários disponíveis serão inseridos aqui via JavaScript -->
                 </div>
+                <!-- Legenda de cores dos horários -->
+                <div id="available-times-legend" class="mt-3 small">
+                  <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div class="d-inline-flex align-items-center gap-2">
+                      <span class="legend-box" style="display:inline-block;width:18px;height:18px;background:#ffffff;border:1px solid rgba(0,0,0,0.12);border-radius:4px;"></span>
+                      <span>Disponível</span>
+                    </div>
+                    <div class="d-inline-flex align-items-center gap-2">
+                      <span class="legend-box" style="display:inline-block;width:18px;height:18px;background:#ffedd5;border:2px solid #f97316;border-radius:4px;"></span>
+                      <span>Passado (indisponível)</span>
+                    </div>
+                    <div class="d-inline-flex align-items-center gap-2">
+                      <span class="legend-box" style="display:inline-block;width:18px;height:18px;background:#fecaca;border:2px solid #ef4444;border-radius:4px;"></span>
+                      <span>Reservado</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
