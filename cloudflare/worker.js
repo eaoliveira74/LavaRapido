@@ -123,15 +123,16 @@ export default {
 
         const file = form.get('comprovante');
         if (file && typeof file === 'object' && 'stream' in file) {
-          const allowed = /(jpeg|jpg|png|gif|pdf)$/i;
           const ct = (file.type || '').toLowerCase();
           const name = (file.name || '').toLowerCase();
-          const ext = name.split('.').pop() || '';
+          const ext = (name.split('.').pop() || '').toLowerCase();
           if (file.size && file.size > 1 * 1024 * 1024) return bad('Arquivo muito grande. O limite é 1 MB.', 413);
-          if (!(allowed.test(ct) || allowed.test(ext))) return bad('Invalid file type. Only images and PDFs are allowed.', 400);
+          const isPdfByCT = ct === 'application/pdf';
+          const isPdfByExt = ext === 'pdf';
+          if (!(isPdfByCT || isPdfByExt)) return bad('Tipo de arquivo inválido. Envie apenas PDF.', 400);
           const base = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const key = `comprovantes/${base}.${ext || 'bin'}`;
-          await env.UPLOADS.put(key, file.stream(), { httpMetadata: { contentType: ct || 'application/octet-stream' } });
+          const key = `comprovantes/${base}.${isPdfByExt ? 'pdf' : (ext || 'pdf')}`;
+          await env.UPLOADS.put(key, file.stream(), { httpMetadata: { contentType: isPdfByCT ? 'application/pdf' : (ct || 'application/pdf') } });
           comprovanteKey = key;
           status = 'Reservado';
         }
@@ -217,6 +218,80 @@ export default {
       return ok({ lat: j.latitude || parseFloat(lat), lon: j.longitude || parseFloat(lon), days });
     }
 
+    // Admin: trigger cleanup manually (requires admin bearer token)
+    if (path === '/api/admin/cleanup' && (request.method === 'POST' || request.method === 'GET')) {
+      const admin = await requireAdmin();
+      if (!admin) return bad('unauthorized', 401);
+      const d = parseInt(url.searchParams.get('days') || '10', 10);
+      const days = isNaN(d) ? 10 : d;
+      const stats = await cleanupOldComprovantes(env, days);
+      return ok({ ok: true, days, ...stats });
+    }
+
+    // Admin: prune old appointments (date before provided 'before' or today)
+    if (path === '/api/admin/prune-appointments' && (request.method === 'POST' || request.method === 'GET')) {
+      const admin = await requireAdmin();
+      if (!admin) return bad('unauthorized', 401);
+      const before = url.searchParams.get('before') || (new Date().toISOString().slice(0, 10));
+      const res = await pruneOldAppointments(env, before);
+      return ok({ ok: true, before, ...res });
+    }
+
     return bad('Not found', 404);
   }
+  ,
+  // Scheduled cleanup for old comprovantes in R2 (older than 10 days)
+  async scheduled(controller, env, ctx) {
+    // Run both: comprovante cleanup and appointment pruning
+    ctx.waitUntil((async () => {
+      try { await cleanupOldComprovantes(env, 10); } catch {}
+      try {
+        // Use today's date in UTC (cron runs at 03:00 UTC ~= 00:00 BRT)
+        const today = new Date().toISOString().slice(0, 10);
+        await pruneOldAppointments(env, today);
+      } catch {}
+    })());
+  }
 };
+
+// Helper: cleanup comprovantes older than N days from R2 and clear DB references
+async function cleanupOldComprovantes(env, days = 10) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  let cursor = undefined;
+  let removed = 0;
+  let scanned = 0;
+  do {
+    const list = await env.UPLOADS.list({ prefix: 'comprovantes/', cursor });
+    cursor = list.cursor;
+    const objects = list.objects || list; // compatibility safeguard
+    for (const obj of objects) {
+      scanned++;
+      const uploaded = obj.uploaded instanceof Date ? obj.uploaded.getTime() : (obj.uploaded ? new Date(obj.uploaded).getTime() : 0);
+      if (uploaded && uploaded < cutoff) {
+        try { await env.UPLOADS.delete(obj.key); removed++; } catch {}
+        try { await env.DB.prepare(`UPDATE appointments SET comprovante_key = NULL WHERE comprovante_key = ?`).bind(obj.key).run(); } catch {}
+      }
+    }
+  } while (cursor);
+  return { removed, scanned };
+}
+
+// Helper: delete appointments older than a given date (data < beforeDate)
+// Also deletes associated comprovantes from R2
+async function pruneOldAppointments(env, beforeDate /* format YYYY-MM-DD */) {
+  // find rows to delete first
+  const rows = await env.DB.prepare(`SELECT id, comprovante_key as key FROM appointments WHERE data < ?`).bind(beforeDate).all();
+  const list = rows?.results || [];
+  let deleted = 0;
+  let removedProofs = 0;
+  for (const r of list) {
+    if (r.key) {
+      try { await env.UPLOADS.delete(r.key); removedProofs++; } catch {}
+    }
+    try {
+      await env.DB.prepare(`DELETE FROM appointments WHERE id = ?`).bind(r.id).run();
+      deleted++;
+    } catch {}
+  }
+  return { deleted, removedProofs };
+}

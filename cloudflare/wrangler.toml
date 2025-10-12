@@ -14,3 +14,6 @@ bucket_name = "lava-rapido-uploads"
 
 [observability]
 enabled = true
+
+[triggers]
+crons = ["0 3 * * *"] # daily at 03:00 UTC

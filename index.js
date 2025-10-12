@@ -109,7 +109,7 @@ function init() {
     const friendlyError = (serverMsg) => {
         if (!serverMsg) return 'Ocorreu um erro. Tente novamente.';
         const msg = serverMsg.toString().toLowerCase();
-        if (msg.includes('invalid file type')) return 'Formato de arquivo inválido. Use JPG, PNG ou PDF.';
+    if (msg.includes('invalid file type') || msg.includes('apenas pdf') || msg.includes('tipo de arquivo inválido')) return 'Formato de arquivo inválido. Envie apenas PDF.';
         if (msg.includes('file too large') || msg.includes('request entity too large') || msg.includes('payload too large') || msg.includes('exceeded')) return 'Arquivo muito grande. O limite é 1 MB.';
         if (msg.includes('password')) return 'Senha incorreta.';
         return serverMsg;
@@ -233,6 +233,12 @@ function init() {
   
   const updateAvailableTimes = () => {
       const selectedDate = datePicker.value;
+      // block past times when selected date is today
+      const now = new Date();
+      const tzOffset = now.getTimezoneOffset();
+      const todayStr = new Date(now.getTime() - tzOffset * 60000).toISOString().slice(0,10);
+      const isToday = selectedDate === todayStr;
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
       const displayDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR');
       availableTimesTitle.textContent = `Horários para ${displayDate}`;
       // Prefer server-side public appointments when available
@@ -244,13 +250,17 @@ function init() {
       timeSelect.innerHTML = '<option value="">Selecione um horário</option>';
       AVAILABLE_TIMES.forEach(time => {
           const isBooked = bookedSlots.has(time);
+          const [hh, mm] = time.split(':').map(Number);
+          const minutes = hh * 60 + mm;
+          const isPastToday = isToday && minutes <= nowMinutes; // não permitir horários passados no dia atual
+          const unavailable = isBooked || isPastToday;
           const slot = document.createElement('div');
-          slot.className = `slot p-2 rounded text-center small ${isBooked ? 'reserved' : 'free'}`;
+          slot.className = `slot p-2 rounded text-center small ${unavailable ? (isBooked ? 'reserved unavailable' : 'unavailable') : 'free'}`;
           slot.dataset.time = time;
           slot.innerHTML = `<div class="slot-label fw-bold">${time}</div>`;
           availableTimesGrid.appendChild(slot);
           // also populate the select with only free slots
-          if (!isBooked) {
+          if (!unavailable) {
               const option = document.createElement('option');
               option.value = time;
               option.textContent = time;
@@ -260,6 +270,7 @@ function init() {
       // Make slots clickable to select time
       availableTimesGrid.querySelectorAll('.slot').forEach(s => s.addEventListener('click', () => {
           const t = s.dataset.time;
+          if (s.classList.contains('unavailable')) return; // ignore unavailable
           if (timeSelect.querySelector(`option[value="${t}"]`)) {
               timeSelect.value = t;
               timeSelect.dispatchEvent(new Event('change'));
@@ -365,6 +376,22 @@ function init() {
 
     appointmentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+        // block past time submission if selected date is today
+        const selectedDate = datePicker.value;
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset();
+        const todayStr = new Date(now.getTime() - tzOffset * 60000).toISOString().slice(0,10);
+        const isToday = selectedDate === todayStr;
+        if (isToday) {
+            const tVal = document.getElementById('horario').value || '00:00';
+            const [hh, mm] = tVal.split(':').map(Number);
+            const selectedMinutes = hh * 60 + mm;
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            if (selectedMinutes <= nowMinutes) {
+                showAnnouncement('Não é permitido agendar para um horário já passado de hoje.', 'warning');
+                return;
+            }
+        }
         const comprovanteInput = document.getElementById('comprovante');
         const file = comprovanteInput && comprovanteInput.files && comprovanteInput.files[0];
 
@@ -467,12 +494,29 @@ function init() {
           const f = comprovanteInputEl.files && comprovanteInputEl.files[0];
           if (!statusEl) return;
           if (f) {
-              statusEl.textContent = `${f.name} — arquivo selecionado`;
+              if (!/\.pdf$/i.test(f.name)) {
+                  statusEl.textContent = 'Apenas PDF é permitido.';
+                  comprovanteInputEl.value = '';
+                  return;
+              }
+              statusEl.textContent = `${f.name} — PDF selecionado`;
           } else {
               statusEl.textContent = '';
           }
       });
   }
+
+  // Set date-picker min to today to avoid selecting past dates
+  (function ensureMinDate() {
+      if (!datePicker) return;
+      try {
+          const now = new Date();
+          const tzOffset = now.getTimezoneOffset();
+          const todayStr = new Date(now.getTime() - tzOffset * 60000).toISOString().slice(0,10);
+          datePicker.setAttribute('min', todayStr);
+          if (!datePicker.value) datePicker.value = todayStr;
+      } catch {}
+  })();
   
   appointmentsTableBody.addEventListener('click', async (e) => {
       const target = e.target;
