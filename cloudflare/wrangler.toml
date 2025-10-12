@@ -1,0 +1,16 @@
+name = "lava-rapido-proxy"
+main = "worker.js"
+compatibility_date = "2024-10-01"
+
+[[d1_databases]]
+binding = "DB"           # accessible in env.DB
+database_name = "lava_rapido_db" # ajuste conforme nome criado no CF
+database_id = "e446bfe8-29ad-46fa-b646-0576bb095e5a" # ID real (remote)
+migrations_dir = "./migrations"
+
+[[r2_buckets]]
+binding = "UPLOADS"      # acessível via env.UPLOADS
+bucket_name = "lava-rapido-uploads"
+
+[observability]
+enabled = true

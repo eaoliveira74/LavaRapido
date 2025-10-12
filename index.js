@@ -551,7 +551,7 @@ function init() {
           if (confirm(`Tem certeza que deseja excluir o agendamento de ${app.nomeCliente}?`)) {
               if (adminToken) {
                   try {
-                      const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+                      const backend = getBackendBase();
                       const res = await fetch(`${backend}/api/appointments/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminToken}` } });
                       if (!res.ok) { showAnnouncement('Falha ao excluir agendamento no servidor.','danger'); return; }
                       showAnnouncement('Agendamento excluído no servidor.','success');
@@ -817,7 +817,7 @@ function init() {
     // Fetch weather from the server-side Visual Crossing proxy
     async function fetchVisualWeather(lat, lon, startDate, endDate) {
         try {
-            const backend = window.__BACKEND_URL__ || 'http://localhost:4000';
+            const backend = getBackendBase();
             const url = new URL(`${backend}/api/visual-weather`);
             url.searchParams.set('lat', lat);
             url.searchParams.set('lon', lon);
@@ -1252,7 +1252,7 @@ function init() {
             const adminPasswordModal = bootstrap.Modal.getInstance(adminPasswordModalEl);
 
             // Try backend login first
-            const backend = (window.__BACKEND_URL__ || 'http://localhost:4000');
+            const backend = getBackendBase();
             try {
                 const res = await fetch(`${backend}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: input }) });
                 if (res.ok) {

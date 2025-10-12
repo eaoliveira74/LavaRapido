@@ -1,3 +1,24 @@
+Backend (Railway) — Guia Rápido
+
+Passos (via painel Railway, com conta GitHub):
+
+1) New Project → Deploy from GitHub → selecione o repositório LavaRapido.
+2) Serviço "Node/Express" (auto detecta package.json). Configure:
+   - Start Command: node index.js
+   - PORT: 4100 (variable)
+   - NODE_ENV: production
+   - VISUALCROSSING_API_KEY: (opcional, para clima)
+3) Volumes persistentes (Settings → Volumes):
+   - Mount path: /app/data → para persistir server/data/appointments.json
+   - Mount path: /app/uploads → para persistir comprovantes
+4) Deploy. Ao subir, verifique Logs e a URL pública (ex.: https://lava-rapido.up.railway.app)
+5) No GitHub (repo → Settings → Secrets and variables → Actions → New repository secret):
+   - BACKEND_URL = URL pública do Railway (ex.: https://lava-rapido.up.railway.app)
+
+Frontend (GitHub Pages):
+
+O workflow .github/workflows/deploy-frontend.yml constrói o Vite usando VITE_BACKEND_URL=$BACKEND_URL do Secrets e publica no Pages.
+Assim, o frontend consumirá a API do Railway de qualquer dispositivo.
 Backend POC for LavaRapido
 
 This is a small Node/Express backend intended as a proof-of-concept to:

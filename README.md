@@ -47,6 +47,12 @@ Notes and recommendations
 - For production consider using a proper file storage (S3) and a database instead of local JSON files.
 - Secure `ADMIN_PASSWORD_HASH` and `JWT_SECRET` via repository secrets or environment variables in your deployment platform.
 
+Cloudflare-only backend option
+- Este repositório possui um backend alternativo baseado em Cloudflare Workers (D1 + R2) em `cloudflare/`.
+- Após publicar o Worker, defina o secret do repositório:
+   - `BACKEND_URL` = URL do Worker (ex.: https://lava-rapido-proxy.<sua-conta>.workers.dev)
+- Opcional: adicione `VISUALCROSSING_API_KEY` como secret do Worker para previsão do tempo aprimorada.
+
 GitHub deployment checklist (step-by-step)
 1. Add repository secrets (Settings → Secrets and variables → Actions):
    - `GHCR_TOKEN` — a Personal Access Token (classic) with `write:packages` and `read:packages` to allow the backend image to be pushed to GitHub Container Registry (GHCR).
