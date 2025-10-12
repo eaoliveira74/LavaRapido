@@ -102,6 +102,12 @@ function init() {
                 return import.meta.env.VITE_BACKEND_URL;
             }
         } catch (_) {}
+        try {
+            if (typeof window !== 'undefined' && /\.github\.io$/.test(window.location.hostname)) {
+                // Default to Cloudflare Worker in GitHub Pages if not provided by env
+                return 'https://lava-rapido-proxy.e-a-oliveira74.workers.dev';
+            }
+        } catch (_) {}
         return 'http://localhost:4000';
     };
 
