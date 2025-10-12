@@ -1070,7 +1070,8 @@ function init() {
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <div class="icon">${icon}</div>
                         <div>
-                            <div class="temp">Máx ${tmax}°C · Min ${tmin}°C</div>
+                            <div class="temp"><strong>Máx ${tmax}°C</strong></div>
+                            <div class="temp text-secondary">Min ${tmin}°C</div>
                             <div class="cond">${cond}${(feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : ''}${precipProb!=null ? ` · ${precipProb}% chuva` : ''}</div>
                         </div>
                     </div>
