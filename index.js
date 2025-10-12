@@ -1059,19 +1059,20 @@ function init() {
                 if (!el) return;
                 if (!day) { el.innerHTML = `<div class="title">${label}</div><div class="cond">Indisponível</div>`; return; }
                 const cond = day.conditionSimple || day.label || (day.conditions || '') || 'Indeterminado';
-                const temp = Math.round(day.temp || day.tempmax || 0);
+                const tmax = Math.round(day.tempmax != null ? day.tempmax : (day.temp != null ? day.temp : 0));
+                const tmin = Math.round(day.tempmin != null ? day.tempmin : (day.temp != null ? day.temp : 0));
                 const icon = (cond === 'Ensolarado') ? ICON_SUN : (cond === 'Nublado' ? ICON_CLOUD : (cond === 'Chuvoso' ? ICON_RAIN : ''));
                 el.innerHTML = `
                     <div class="title">${label}</div>
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <div class="icon">${icon}</div>
                         <div>
-                            <div class="temp">${temp}°C</div>
+                            <div class="temp">Máx ${tmax}°C · Min ${tmin}°C</div>
                             <div class="cond">${cond}</div>
                         </div>
                     </div>
                 `;
-                el.setAttribute('title', `${label}: ${cond} — ${temp}°C`);
+                el.setAttribute('title', `${label}: ${cond} — Máx ${tmax}°C · Min ${tmin}°C`);
             };
 
             renderCard(todayEl, t0, 'Hoje');
@@ -1085,7 +1086,7 @@ function init() {
     // Fetch simple weather summary via Open-Meteo (no key required)
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
         // Open-Meteo daily summary for weathercode
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`;
         try {
             const res = await fetch(url);
             if (!res.ok) return null;
@@ -1100,7 +1101,9 @@ function init() {
             };
             const days = (j.daily && j.daily.time) || [];
             const codes = (j.daily && j.daily.weathercode) || [];
-            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1) }));
+            const tmax = (j.daily && j.daily.temperature_2m_max) || [];
+            const tmin = (j.daily && j.daily.temperature_2m_min) || [];
+            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null }));
         } catch (e) {
             return null;
         }
@@ -1321,7 +1324,9 @@ function init() {
                 const today = weather.find(d => d.date === todayISO) || weather[0];
                 if (today) {
                     const iconSvg = (today.conditionSimple === 'Ensolarado') ? ICON_SUN : (today.conditionSimple === 'Nublado' ? ICON_CLOUD : (today.conditionSimple === 'Chuvoso' ? ICON_RAIN : ''));
-                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — ${Math.round(today.temp || today.tempmax || 0)}°C`;
+                    const tmax = Math.round(today.tempmax != null ? today.tempmax : (today.temp != null ? today.temp : 0));
+                    const tmin = Math.round(today.tempmin != null ? today.tempmin : (today.temp != null ? today.temp : 0));
+                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — Máx ${tmax}°C · Min ${tmin}°C`;
                 }
             }
         } catch (e) { /* ignore */ }
