@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Agendamento - Lava Rápido Versátil</title>
+    <!-- Inclusão do Bootstrap CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Link para a folha de estilos personalizada -->
+  <script type="module" crossorigin src="./assets/index-BRdnO70Z.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BVKG-O_7.css">
+</head>
+  <body>
+
+    <!-- Accessibility toolbar -->
+    <div id="a11y-toolbar" class="p-2" style="background:#f8fafc;">
+      <div class="container d-flex gap-2 align-items-center">
+        <span class="small text-secondary">Acessibilidade:</span>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="a11y-contrast" aria-checked="false">
+          <label class="form-check-label small" for="a11y-contrast">Alto contraste</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="a11y-large-text" aria-checked="false">
+          <label class="form-check-label small" for="a11y-large-text">Texto maior</label>
+        </div>
+  <button id="a11y-reset" class="btn btn-outline-secondary btn-sm ms-auto">Restaurar padrão</button>
+  <button id="weather-clear-cache" class="btn btn-dark btn-sm ms-2" title="Limpar cache meteorológico">Limpar cache</button>
+  <button id="weather-test-conn" class="btn btn-dark btn-sm ms-2" title="Testar conexão com o serviço meteorológico">Testar tempo</button>
+      </div>
+    </div>
+
+    <!-- Floating toggle button (always visible) -->
+    <button id="a11y-toggle" aria-expanded="false" aria-label="Alternar barra de acessibilidade (Alt+M)" title="Alternar acessibilidade (Alt+M)">☰</button>
+
+    <!-- Cabeçalho da Aplicação -->
+    <header class="py-4 shadow-sm">
+      <div class="container d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="h3 fw-bold" style="color: #ffffff;">Sistema de Agendamento - Lava Rápido Versátil</h1>
+          <p class="mb-0" style="color: #ffffff;">Gerencie seus agendamentos de forma simples e eficiente.</p>
+          <div id="home-weather" class="small text-white mt-1" aria-live="polite"></div>
+          <!-- Small forecast cards: Hoje / Amanhã -->
+          <div id="home-weather-cards" class="d-flex gap-2 mt-2">
+            <div id="weather-card-today" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
+            <div id="weather-card-tomorrow" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
+          </div>
+        </div>
+        <!-- O botão "Trocar Perfil" é escondido por padrão e só aparece após a seleção de um perfil -->
+        <button id="logout-button" class="btn btn-secondary d-none">Trocar Perfil</button>
+      </div>
+    </header>
+
+    <main class="container py-4">
+
+      <!-- Tela de Seleção de Perfil -->
+      <div id="role-selection-view">
+        <div class="card p-4 mx-auto" style="max-width: 500px;">
+          <h2 class="card-title h4" style="color:#ffffff;">Bem-vindo!</h2>
+          <p class="card-text" style="color:#ffffff;">Como você gostaria de acessar o sistema?</p>
+          <div class="d-grid gap-3 pt-3">
+            <button id="select-client-role" class="btn btn-cyan btn-lg" onclick="window.switchView && window.switchView('client')">Sou Cliente</button>
+            <button id="select-admin-role" class="btn btn-secondary btn-lg" onclick="(window.showAdminPasswordModal && window.showAdminPasswordModal()) || (window.switchView && window.switchView('admin'))">Sou Administrador</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Container para mensagens de feedback (sucesso, erro) -->
+      <div id="announcement-container" class="mb-3"></div>
+
+      <!-- Visão do Cliente (escondida por padrão) -->
+      <div id="client-view" class="d-none">
+        <div class="row g-4">
+          <!-- Coluna para Consultar Vagas -->
+          <div class="col-lg-5">
+            <div class="card">
+              <div class="card-body">
+                <h2 class="card-title h4 mb-3">Consultar Vagas</h2>
+                <label for="date-picker" class="form-label">Selecione uma data:</label>
+                <input type="date" id="date-picker" class="form-control mb-4">
+                <h3 id="available-times-title" class="h6 text-light mb-3">Horários para...</h3>
+                <div id="available-times-grid" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
+                  <!-- Horários disponíveis serão inseridos aqui via JavaScript -->
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Coluna para Novo Agendamento -->
+          <div class="col-lg-7">
+            <div class="card">
+              <div class="card-body">
+                <h2 class="card-title h4 mb-3">Novo Agendamento</h2>
+                <form id="appointment-form">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label for="nomeCliente" class="form-label">Seu Nome:</label>
+                      <input type="text" id="nomeCliente" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="telefoneCliente" class="form-label">Seu Telefone/WhatsApp:</label>
+                      <input type="tel" id="telefoneCliente" class="form-control" placeholder="(XX) XXXXX-XXXX" required>
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <label for="servicoId" class="form-label">Tipo de Serviço:</label>
+                    <select id="servicoId" class="form-select" required>
+                      <!-- Opções de serviço serão inseridas aqui via JavaScript -->
+                    </select>
+                  </div>
+                  <div class="mt-3">
+                    <label for="horario" class="form-label">Horário:</label>
+                    <select id="horario" class="form-select" required>
+                       <!-- Horários disponíveis serão inseridos aqui via JavaScript -->
+                    </select>
+                  </div>
+                  <div id="completion-time-alert" class="alert alert-info mt-3 d-none"></div>
+                   <div class="mt-3">
+                    <label for="observacoes" class="form-label">Observações:</label>
+                    <textarea id="observacoes" rows="2" class="form-control" placeholder="Informações adicionais sobre o veículo ou serviço"></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-cyan mt-4">Agendar Serviço</button>
+                </form>
+              </div>
+            </div>
+            <!-- Upload de comprovante: o cliente pode enviar comprovante ao agendar -->
+            <div class="card mt-4">
+              <div class="card-body">
+                <h3 class="h5">Comprovante de Pagamento</h3>
+                <p class="text-secondary small">Se desejar reservar imediatamente, anexe o comprovante junto com o agendamento.</p>
+                <div class="mt-3">
+                  <label for="comprovante" class="form-label">Anexar Comprovante (imagem ou PDF):</label>
+                  <input type="file" id="comprovante" accept="image/*,application/pdf" class="form-control">
+                  <div id="comprovante-status" class="mt-2 small text-muted" aria-live="polite"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visão do Administrador (escondida por padrão) -->
+      <div id="admin-view" class="d-none">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="card-title h4">Menu do Administrador</h2>
+                <div class="d-flex gap-2">
+          <button id="show-appointments-btn" class="btn btn-cyan">Ver Agendamentos</button>
+          <button id="show-services-btn" class="btn btn-secondary">Gerenciar Serviços</button>
+          <button id="show-stats-btn" class="btn btn-outline-light">Estatísticas</button>
+                </div>
+            </div>
+
+          <!-- Seção de Estatísticas (Admin) -->
+          <div id="admin-stats-section" class="card mt-4 d-none">
+            <div class="card-body">
+              <h3 class="card-title h5">Estatísticas</h3>
+              <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                  <label for="stats-range" class="form-label">Período:</label>
+                  <select id="stats-range" class="form-select">
+                    <option value="day">Dia</option>
+                    <option value="week">Semana</option>
+                    <option value="month" selected>Mês</option>
+                    <option value="year">Ano</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="stats-date" class="form-label">Data de referência:</label>
+                  <input type="date" id="stats-date" class="form-control" />
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+              <div class="d-flex gap-2 ms-auto">
+                <button id="stats-refresh" class="btn btn-cyan">Atualizar</button>
+                <button id="stats-export" class="btn btn-outline-light">Exportar CSV</button>
+              </div>
+                </div>
+              </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="stats-cep" class="form-label">CEP:</label>
+            <input type="text" id="stats-cep" class="form-control" placeholder="Ex: 01001-000" />
+            <div id="stats-cep-feedback" class="small text-warning d-none mt-2" aria-live="polite"></div>
+          </div>
+          <div class="col-md-8 d-flex align-items-center">
+            <small class="text-secondary">Informe um CEP para buscar coordenadas automaticamente (padrão: São Paulo se vazio). O CEP é resolvido via ViaCEP.</small>
+          </div>
+        </div>
+              <div class="mb-3">
+                <canvas id="stats-chart" height="120"></canvas>
+              </div>
+              <div id="stats-weather-strip" class="d-flex gap-2 align-items-center mt-3" aria-live="polite"></div>
+              <div id="stats-weather-legend" class="small text-secondary mt-1">Legenda:</div>
+              <div id="stats-weather" class="small text-secondary"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Lista de Agendamentos (Admin) -->
+        <div id="admin-appointments-section">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title h5">Lista de Agendamentos</h3>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Horário</th>
+                                    <th>Cliente</th>
+                                    <th>Serviço</th>
+                                    <th>Observações</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="appointments-table-body">
+                                <!-- Linhas da tabela serão inseridas aqui via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção de Gerenciamento de Serviços (Admin) -->
+        <div id="admin-services-section" class="d-none">
+           <div class="card">
+                <div class="card-body">
+                     <h3 class="card-title h5 mb-4">Gerenciar Serviços</h3>
+                     <div class="row g-4">
+                        <div class="col-lg-7">
+                            <h4 class="h6">Serviços Disponíveis</h4>
+                            <ul id="services-list" class="list-group">
+                                <!-- Itens da lista serão inseridos aqui via JavaScript -->
+                            </ul>
+                        </div>
+                        <div class="col-lg-5">
+                            <h4 id="service-form-title" class="h6">Adicionar Novo Serviço</h4>
+                            <form id="service-form">
+                                <input type="hidden" id="service-id-hidden">
+                                <div class="mb-3">
+                                    <label for="serviceName" class="form-label">Nome do Serviço:</label>
+                                    <input type="text" id="serviceName" class="form-control" required>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label for="servicePrice" class="form-label">Preço (R$):</label>
+                                        <input type="number" id="servicePrice" class="form-control" step="0.01" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="serviceDuration" class="form-label">Duração (min):</label>
+                                        <input type="number" id="serviceDuration" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 mt-3">
+                                    <button type="submit" id="service-form-submit-btn" class="btn btn-cyan">Adicionar</button>
+                                    <button type="button" id="service-form-cancel-btn" class="btn btn-secondary d-none">Cancelar</button>
+                                </div>
+                            </form>
+                        </div>
+                     </div>
+                </div>
+           </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal de Notificação WhatsApp -->
+    <div class="modal fade" id="whatsapp-modal" tabindex="-1" aria-labelledby="whatsapp-modal-label" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title" id="whatsapp-modal-label">Notificar Cliente</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-2">Enviando para: <strong id="whatsapp-client-name" class="text-info"></strong></p>
+            <div class="mb-3">
+              <label for="whatsapp-message" class="form-label">Mensagem:</label>
+              <textarea class="form-control" id="whatsapp-message" rows="5"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success" id="send-whatsapp-btn">Enviar via WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <!-- Modal de senha do Administrador -->
+      <div class="modal fade" id="admin-password-modal" tabindex="-1" aria-labelledby="admin-password-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header border-0">
+              <h5 class="modal-title" id="admin-password-modal-label">Área do Administrador</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="admin-password-input" class="form-label">Digite a senha de administrador:</label>
+                <input type="password" id="admin-password-input" class="form-control" autocomplete="current-password">
+              </div>
+              <div id="admin-password-feedback" class="text-danger small d-none">Senha incorreta.</div>
+            </div>
+            <div class="modal-footer border-0">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" class="btn btn-cyan" id="admin-password-submit">Entrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    <!-- Inclusão do Bootstrap JS (e suas dependências) via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    
+    <!-- Lógica principal da aplicação em JavaScript -->
+</body>
+</html>
