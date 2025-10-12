@@ -152,13 +152,14 @@ body {
   color: #000000;
   border: 1px solid rgba(0,0,0,0.12);
 }
-.slot.reserved {
-  background: #cfe8ff; /* light blue */
+#available-times-grid .slot.reserved {
+  background: #fecaca; /* light red */
   color: #000000;
-  border: 1px solid rgba(0,0,0,0.14);
+  border: 2px solid #ef4444 !important;
+  cursor: not-allowed;
 }
 #available-times-grid .slot.unavailable {
-  background: #ffe4e6; /* light rose */
+  background: #fecaca; /* light red */
   color: #000000;
   border: 2px solid #ef4444 !important; /* red border for unavailable */
   cursor: not-allowed;
