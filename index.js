@@ -276,6 +276,40 @@ function init() {
               timeSelect.dispatchEvent(new Event('change'));
           }
       }));
+
+            // Ensure legend exists and is visible
+            try {
+                    const legendHTML = `
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <div class="d-inline-flex align-items-center gap-2">
+                                    <span class="legend-box" style="display:inline-block;width:18px;height:18px;background:#ffffff;border:1px solid rgba(0,0,0,0.12);border-radius:4px;"></span>
+                                    <span>Disponível</span>
+                                </div>
+                                <div class="d-inline-flex align-items-center gap-2">
+                                    <span class="legend-box" style="display:inline-block;width:18px;height:18px;background:#ffedd5;border:2px solid #f97316;border-radius:4px;"></span>
+                                    <span>Passado (indisponível)</span>
+                                </div>
+                                <div class="d-inline-flex align-items-center gap-2">
+                                    <span class="legend-box" style="display:inline-block;width:18px;height:18px;background:#fecaca;border:2px solid #ef4444;border-radius:4px;"></span>
+                                    <span>Reservado</span>
+                                </div>
+                            </div>`;
+                    const grid = document.getElementById('available-times-grid');
+                    if (grid) {
+                            let legend = document.getElementById('available-times-legend');
+                            if (!legend) {
+                                    legend = document.createElement('div');
+                                    legend.id = 'available-times-legend';
+                                    legend.className = 'mt-3 small';
+                                    legend.innerHTML = legendHTML;
+                                    grid.insertAdjacentElement('afterend', legend);
+                            } else {
+                                    legend.innerHTML = legendHTML;
+                                    legend.classList.remove('d-none');
+                                    legend.style.display = 'block';
+                            }
+                    }
+            } catch { /* noop */ }
   };
   
   const renderAppointmentsTable = () => {
