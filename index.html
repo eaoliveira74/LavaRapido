@@ -2,7 +2,7 @@
 <html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
   <title>Sistema de Agendamento - Lava Rápido Versátil</title>
     <!-- Inclusão do Bootstrap CSS via CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
@@ -34,7 +34,7 @@
 
     <!-- Cabeçalho da Aplicação -->
     <header class="py-4 shadow-sm">
-      <div class="container d-flex justify-content-between align-items-center">
+  <div class="container d-flex justify-content-between align-items-center flex-wrap">
         <div>
           <h1 class="h3 fw-bold" style="color: #ffffff;">Sistema de Agendamento - Lava Rápido Versátil</h1>
           <p class="mb-0" style="color: #ffffff;">Gerencie seus agendamentos de forma simples e eficiente.</p>
@@ -50,7 +50,7 @@
       </div>
     </header>
 
-    <main class="container py-4">
+  <main class="container py-4">
 
       <!-- Tela de Seleção de Perfil -->
       <div id="role-selection-view">
@@ -69,9 +69,9 @@
 
       <!-- Visão do Cliente (escondida por padrão) -->
       <div id="client-view" class="d-none">
-        <div class="row g-4">
+  <div class="row g-4">
           <!-- Coluna para Consultar Vagas -->
-          <div class="col-lg-5">
+          <div class="col-lg-5 col-md-6">
             <div class="card">
               <div class="card-body">
                 <h2 class="card-title h4 mb-3">Consultar Vagas</h2>
@@ -102,7 +102,7 @@
             </div>
           </div>
           <!-- Coluna para Novo Agendamento -->
-          <div class="col-lg-7">
+          <div class="col-lg-7 col-md-6">
             <div class="card">
               <div class="card-body">
                 <h2 class="card-title h4 mb-3">Novo Agendamento</h2>

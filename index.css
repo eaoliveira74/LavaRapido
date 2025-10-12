@@ -2,6 +2,8 @@ body {
   background-color: #0f172a; /* Cor de fundo principal (slate-900) */
   color: #e2e8f0; /* Cor de texto principal (slate-200) */
 }
+/* Base responsive typography: scale slightly with viewport */
+html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 .card {
   background-color: #1e293b; /* Cor dos cards (slate-800) */
   border: 1px solid #334155; /* Cor da borda dos cards (slate-700) */
@@ -245,3 +247,39 @@ body {
 #admin-view #services-list .list-group-item, #admin-view #services-list .list-group-item * { color: #ffffff !important; }
 #admin-view #services-list .list-group-item .btn { color: #ffffff !important; border-color: rgba(255,255,255,0.08) !important; background: transparent !important; }
 #admin-view #services-list .list-group-item .btn:hover { background: rgba(255,255,255,0.04) !important; }
+
+/* ========================= */
+/* Responsive adjustments    */
+/* ========================= */
+@media (max-width: 992px) {
+  /* Reduce horizontal clutter on medium screens */
+  header .container { gap: 8px; }
+  .weather-card { min-width: 120px; }
+}
+
+@media (max-width: 576px) {
+  /* Stack header content */
+  header .container { flex-direction: column; align-items: flex-start; }
+  #home-weather { margin-top: 6px; }
+  #home-weather-cards { width: 100%; flex-wrap: wrap; gap: 8px; }
+  .weather-card { min-width: 0; flex: 1 1 calc(50% - 8px); }
+  .weather-card .temp { font-size: 1rem; }
+  .weather-card .cond { font-size: 0.8rem; }
+
+  /* Time slots grid: make items smaller */
+  #available-times-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .slot { min-height: 44px; padding: 6px 4px; }
+  .slot .slot-label { font-size: 0.9rem; }
+
+  /* Role selection: comfortable buttons without overflow */
+  #role-selection-view .btn-lg { padding: .6rem 1rem; font-size: 1.05rem; }
+
+  /* Tables: ensure responsive container takes full width */
+  .table-responsive { width: 100%; }
+}
+
+@media (max-width: 360px) {
+  .weather-card .icon svg { width: 28px; height: 28px; }
+  .weather-card .temp { font-size: 0.95rem; }
+  header h1.h3 { font-size: 1.05rem; }
+}
