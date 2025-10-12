@@ -601,8 +601,8 @@ function init() {
     } else if (action === 'notify') {
           // Guarda o agendamento atual e prepara a mensagem padrão
           currentNotificationAppointment = app;
-          const serviceName = services.find(s => s.id === app.servicoId)?.nome || 'serviço';
-          const message = `Olá ${app.nomeCliente}, passando para confirmar seu agendamento de ${serviceName} para o dia ${new Date(app.data + 'T00:00:00').toLocaleDateString('pt-BR')} às ${app.horario}.`;
+          const serviceName = services.find(s => s.id === app.servicoId)?.nome || 'lavagem';
+          const message = `Olá ${app.nomeCliente}, informamos que a ${serviceName} do seu veículo foi CONCLUÍDA em ${new Date(app.data + 'T00:00:00').toLocaleDateString('pt-BR')} às ${app.horario}. Agradecemos a preferência! Qualquer dúvida, estamos à disposição.`;
           
           // Preenche os dados no modal e o exibe
           whatsAppClientName.textContent = app.nomeCliente;
