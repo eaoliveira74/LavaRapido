@@ -222,11 +222,23 @@ export default {
       if (!env.VISUALCROSSING_API_KEY) return bad('no api key', 400);
       const startPath = start ? `/${start}` : '';
       const endPath = end ? `/${end}` : '';
-      const api = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}${startPath}${endPath}?unitGroup=metric&include=days&elements=datetime,conditions,temp,tempmax,tempmin,precip,precipprob&key=${encodeURIComponent(env.VISUALCROSSING_API_KEY)}&contentType=json`;
+  const api = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}${startPath}${endPath}?unitGroup=metric&include=days&elements=datetime,conditions,temp,tempmax,tempmin,feelslike,feelslikemax,feelslikemin,precip,precipprob&key=${encodeURIComponent(env.VISUALCROSSING_API_KEY)}&contentType=json`;
       const r = await fetch(api);
       if (!r.ok) return bad('visualcrossing_error', 502);
       const j = await r.json();
-      const days = (j.days || []).map(d => ({ date: d.datetime, conditions: d.conditions || '', precipprob: d.precipprob, conditionSimple: normalizeCondition(d.conditions, d.precipprob), temp: d.temp, tempmax: d.tempmax, tempmin: d.tempmin, precip: d.precip }));
+      const days = (j.days || []).map(d => ({
+        date: d.datetime,
+        conditions: d.conditions || '',
+        precipprob: d.precipprob,
+        conditionSimple: normalizeCondition(d.conditions, d.precipprob),
+        temp: d.temp,
+        tempmax: d.tempmax,
+        tempmin: d.tempmin,
+        feelslike: d.feelslike,
+        feelslikemax: d.feelslikemax,
+        feelslikemin: d.feelslikemin,
+        precip: d.precip
+      }));
       return ok({ lat: j.latitude || parseFloat(lat), lon: j.longitude || parseFloat(lon), days });
     }
 

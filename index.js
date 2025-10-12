@@ -982,9 +982,9 @@ function init() {
     const writeCepCache = (c) => { try { localStorage.setItem(CEP_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
 
     // SVG icons used in the stats view (small, inline)
-    const ICON_SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="#FFD54A"/><g stroke="#FFD54A" stroke-width="1.2" stroke-linecap="round"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></g></svg>';
-    const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#B0BEC5"/></svg>';
-    const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/><g stroke="#4FC3F7" stroke-linecap="round" stroke-width="1.5"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
+    const ICON_SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="#FFC107"/><g stroke="#FFC107" stroke-width="1.4" stroke-linecap="round"><path d="M12 1.8v2.4"/><path d="M12 19.8v2.4"/><path d="M4.4 4.4l1.7 1.7"/><path d="M17.9 17.9l1.7 1.7"/><path d="M1.8 12h2.4"/><path d="M19.8 12h2.4"/><path d="M4.4 19.6l1.7-1.7"/><path d="M17.9 6.1l1.7-1.7"/></g></svg>';
+    const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/></svg>';
+    const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#78909C"/><g stroke="#03A9F4" stroke-linecap="round" stroke-width="1.6"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
 
     // Fetch weather from the server-side Visual Crossing proxy
     async function fetchVisualWeather(lat, lon, startDate, endDate) {
@@ -1062,13 +1062,15 @@ function init() {
                 const tmax = Math.round(day.tempmax != null ? day.tempmax : (day.temp != null ? day.temp : 0));
                 const tmin = Math.round(day.tempmin != null ? day.tempmin : (day.temp != null ? day.temp : 0));
                 const icon = (cond === 'Ensolarado') ? ICON_SUN : (cond === 'Nublado' ? ICON_CLOUD : (cond === 'Chuvoso' ? ICON_RAIN : ''));
+                const feelsMax = (day.feelslikemax != null) ? Math.round(day.feelslikemax) : null;
+                const feelsMin = (day.feelslikemin != null) ? Math.round(day.feelslikemin) : null;
                 el.innerHTML = `
                     <div class="title">${label}</div>
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <div class="icon">${icon}</div>
                         <div>
                             <div class="temp">Máx ${tmax}°C · Min ${tmin}°C</div>
-                            <div class="cond">${cond}</div>
+                            <div class="cond">${cond}${(feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : ''}</div>
                         </div>
                     </div>
                 `;
@@ -1085,8 +1087,9 @@ function init() {
 
     // Fetch simple weather summary via Open-Meteo (no key required)
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
-        // Open-Meteo daily summary for weathercode
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`;
+        // Open-Meteo daily summary for weathercode + feels_like approximation
+        // Note: Open-Meteo "apparent_temperature_max/min" approximates sensação térmica
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min&timezone=auto`;
         try {
             const res = await fetch(url);
             if (!res.ok) return null;
@@ -1103,7 +1106,9 @@ function init() {
             const codes = (j.daily && j.daily.weathercode) || [];
             const tmax = (j.daily && j.daily.temperature_2m_max) || [];
             const tmin = (j.daily && j.daily.temperature_2m_min) || [];
-            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null }));
+            const appMax = (j.daily && j.daily.apparent_temperature_max) || [];
+            const appMin = (j.daily && j.daily.apparent_temperature_min) || [];
+            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null, feelslikemax: appMax[i] ?? null, feelslikemin: appMin[i] ?? null }));
         } catch (e) {
             return null;
         }
@@ -1326,7 +1331,10 @@ function init() {
                     const iconSvg = (today.conditionSimple === 'Ensolarado') ? ICON_SUN : (today.conditionSimple === 'Nublado' ? ICON_CLOUD : (today.conditionSimple === 'Chuvoso' ? ICON_RAIN : ''));
                     const tmax = Math.round(today.tempmax != null ? today.tempmax : (today.temp != null ? today.temp : 0));
                     const tmin = Math.round(today.tempmin != null ? today.tempmin : (today.temp != null ? today.temp : 0));
-                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — Máx ${tmax}°C · Min ${tmin}°C`;
+                    const feelsMax = (today.feelslikemax != null) ? Math.round(today.feelslikemax) : null;
+                    const feelsMin = (today.feelslikemin != null) ? Math.round(today.feelslikemin) : null;
+                    const feelsTxt = (feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : '';
+                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — Máx ${tmax}°C · Min ${tmin}°C${feelsTxt}`;
                 }
             }
         } catch (e) { /* ignore */ }
