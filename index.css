@@ -206,6 +206,16 @@ body {
   border-color: rgba(255,255,255,0.06) !important;
 }
 
+/* Observações textarea: force white text and placeholder */
+#observacoes {
+  color: #ffffff !important;
+  caret-color: #ffffff;
+}
+#observacoes::placeholder {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
 /* Botões dentro do admin: ajustar cores de rótulos quando necessário */
 #admin-view .btn,
 #admin-view .btn * {
