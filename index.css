@@ -63,8 +63,8 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #a11y-toggle:focus { outline: 3px solid #ffdd57; }
 
 /* Weather strip icons */
-#stats-weather-strip .day-icon { display:flex; flex-direction:column; align-items:center; justify-content:center; width:64px; }
-#stats-weather-strip .day-icon .label { font-size:0.75rem; color:#cbd5e1; margin-top:4px; text-align:center; }
+#stats-weather-strip .day-icon { display:flex; flex-direction:column; align-items:center; justify-content:center; width:48px; }
+#stats-weather-strip .day-icon .label { font-size:0.7rem; color:#cbd5e1; margin-top:2px; text-align:center; }
 #stats-weather-legend span { margin-right:12px; display:inline-flex; align-items:center; gap:6px; }
 /* Hide legend container if empty */
 #stats-weather-legend:empty { display: none; }
@@ -79,6 +79,12 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 /* toolbar weather controls removed */
 .weather-card .icon svg { width:36px; height:36px; }
 .day-icon svg { width:24px; height:24px; }
+
+/* Stats chart sizing: give more space to the chart */
+#stats-chart { width: 100% !important; height: 260px !important; }
+@media (max-width: 576px) {
+  #stats-chart { height: 220px !important; }
+}
 
 /* Improve readability of services list in dark themes */
 /* Services list: ensure readable text even when global admin rules force white text */
