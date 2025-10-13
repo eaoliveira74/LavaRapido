@@ -227,9 +227,13 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #admin-stats-section .len-50 {
   width: 50% !important;
 }
+#admin-stats-section .len-30 {
+  width: 30% !important;
+}
 /* Responsive widths for stats controls */
 @media (max-width: 575.98px) {
   #admin-stats-section .len-50 { width: 100% !important; }
+  #admin-stats-section .len-30 { width: 100% !important; }
 }
 #admin-stats-section label.form-label {
   margin-bottom: .25rem;
