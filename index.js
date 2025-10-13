@@ -1166,9 +1166,10 @@ function init() {
         // dates bounds for queries and weather fetch
         let start = refDate, end = refDate;
         // Build labels from DB stats when available; fall back to client aggregation if not
-        let labels = [];
-        let counts = [];
-        let revenue = [];
+    let labels = [];
+    let counts = [];
+    let revenue = [];
+    let rainPercent = null; // null => dataset omitted; array => plotted
         // First, determine range bounds similar to previous logic
         const computeBounds = (range, refDate) => {
             if (range === 'day') return { start: refDate, end: refDate };
@@ -1203,6 +1204,10 @@ function init() {
             });
             counts = dbStats.map(r => r.carsWashed || 0);
             revenue = dbStats.map(r => r.totalRevenue || 0);
+            // rain probability per day (0-100)
+            if (dbStats.some(r => r.rainProbability != null)) {
+                rainPercent = dbStats.map(r => (r.rainProbability == null ? null : Math.round(Number(r.rainProbability))));
+            }
         } else {
             // fallback: aggregate from appointments on client
             const sourceAppointments = (adminToken && serverAppointments) ? serverAppointments : appointments;
@@ -1215,14 +1220,18 @@ function init() {
 
         // prepare datasets: counts and revenue
         const ctx = statsChartEl.getContext('2d');
+            const datasets = [
+                { label: 'Veículos lavados', data: counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
+                { label: 'Faturamento (R$)', data: revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1' }
+            ];
+            if (Array.isArray(rainPercent)) {
+                datasets.push({ label: '% Chuva', data: rainPercent, type: 'line', borderColor: 'rgba(59,130,246,0.9)', backgroundColor: 'rgba(59,130,246,0.2)', yAxisID: 'y2' });
+            }
             statsChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels,
-                datasets: [
-                    { label: 'Veículos lavados', data: counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
-                    { label: 'Faturamento (R$)', data: revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1' }
-                ]
+                datasets
             },
                 options: {
                     responsive: true,
@@ -1235,7 +1244,8 @@ function init() {
                     scales: {
                         x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
                         y: { type: 'linear', position: 'left', title: { display: true, text: 'Veículos' } },
-                        y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'R$' } }
+                        y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'R$' } },
+                        y2: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, min: 0, max: 100, ticks: { callback: (v)=>`${v}%` }, title: { display: true, text: '% Chuva' }, display: Array.isArray(rainPercent) }
                     }
                 }
         });
@@ -1423,10 +1433,12 @@ function init() {
         if (statsExportBtn) statsExportBtn.addEventListener('click', () => {
             if (!statsChart) return showAnnouncement('Gere o gráfico antes de exportar.','warning');
             const labels = statsChart.data.labels;
-            const counts = statsChart.data.datasets[0].data;
-            const revenue = statsChart.data.datasets[1].data;
-            let csv = 'label,veiculos,faturamento\n';
-            for (let i=0;i<labels.length;i++) csv += `${labels[i]},${counts[i]||0},${revenue[i]||0}\n`;
+            const ds = statsChart.data.datasets;
+            const counts = ds.find(d => d.label === 'Veículos lavados')?.data || [];
+            const revenue = ds.find(d => d.label === 'Faturamento (R$)')?.data || [];
+            const rain = ds.find(d => d.label === '% Chuva')?.data || [];
+            let csv = 'label,veiculos,faturamento,chuva_percent\n';
+            for (let i=0;i<labels.length;i++) csv += `${labels[i]},${counts[i]||0},${revenue[i]||0},${(rain[i]??'')}\n`;
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = 'estatisticas.csv'; document.body.appendChild(a); a.click(); a.remove();
