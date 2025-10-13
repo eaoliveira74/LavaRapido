@@ -230,7 +230,7 @@ export default {
     }
 
     // Visual weather proxy
-    if (path === '/api/visual-weather' && request.method === 'GET') {
+  if (path === '/api/visual-weather' && request.method === 'GET') {
       const lat = url.searchParams.get('lat');
       const lon = url.searchParams.get('lon');
       const start = url.searchParams.get('start');
@@ -256,7 +256,24 @@ export default {
         feelslikemin: d.feelslikemin,
         precip: d.precip
       }));
+      // Best-effort: persist rain probability in stats_daily so charts use the same source as cards
+      try {
+        for (const d of days) {
+          if (d && d.date && typeof d.precipprob !== 'undefined' && d.precipprob !== null) {
+            await env.DB.prepare(`INSERT INTO stats_daily (date, rain_probability) VALUES (?, ?) ON CONFLICT(date) DO UPDATE SET rain_probability = excluded.rain_probability`).bind(d.date, Number(d.precipprob)).run();
+          }
+        }
+      } catch {}
       return ok({ lat: j.latitude || parseFloat(lat), lon: j.longitude || parseFloat(lon), days });
+    }
+
+    // Public: read-only access to daily stats for charts
+    if (path === '/api/stats-daily' && request.method === 'GET') {
+      const start = url.searchParams.get('start');
+      const end = url.searchParams.get('end');
+      if (!start || !end) return bad('start and end required', 400);
+      const rs = await env.DB.prepare(`SELECT date, cars_washed as carsWashed, total_revenue as totalRevenue, rain_probability as rainProbability FROM stats_daily WHERE date BETWEEN ? AND ? ORDER BY date ASC`).bind(start, end).all();
+      return ok(rs?.results || []);
     }
 
     // Admin: trigger cleanup manually (requires admin bearer token)

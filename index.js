@@ -1130,16 +1130,25 @@ function init() {
         }
     }
 
-    // Fetch aggregated daily stats from backend (admin)
+    // Fetch aggregated daily stats (prefer public endpoint; fallback to admin if logged in)
     async function fetchDailyStats(startISO, endISO) {
-        if (!adminToken) return [];
         const backend = getBackendBase();
-        const url = `${backend}/api/admin/stats-daily?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`;
+        const pubUrl = `${backend}/api/stats-daily?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`;
         try {
-            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${adminToken}` } });
-            if (!res.ok) return [];
-            return await res.json();
-        } catch { return []; }
+            const pubRes = await fetch(pubUrl);
+            if (pubRes.ok) {
+                return await pubRes.json();
+            }
+        } catch {}
+        if (adminToken) {
+            try {
+                const admUrl = `${backend}/api/admin/stats-daily?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`;
+                const res = await fetch(admUrl, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                if (!res.ok) return [];
+                return await res.json();
+            } catch {}
+        }
+        return [];
     }
 
     // Upsert rain probability for specific dates (best effort, small ranges only)
@@ -1209,10 +1218,8 @@ function init() {
                 rainPercent = dbStats.map(r => (r.rainProbability == null ? null : Math.round(Number(r.rainProbability))));
             }
         } else {
-            // fallback: aggregate from appointments on client
-            const sourceAppointments = (adminToken && serverAppointments) ? serverAppointments : appointments;
-            const data = aggregateAppointments(range, refDate, sourceAppointments);
-            labels = data.labels; counts = data.counts; revenue = data.revenue;
+            // No DB stats available; show empty chart to reflect the source of truth
+            labels = []; counts = []; revenue = []; rainPercent = null;
         }
 
         // destroy previous chart if exists
