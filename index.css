@@ -128,8 +128,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   background-color: #1e293b;
 }
 
-/* Forçar texto preto para a previsão de término */
-#completion-time-alert { color: #000 !important; }
+/* Forçar texto preto para a previsão de término (inclui filhos) */
+#completion-time-alert, #completion-time-alert * { color: #000 !important; }
+/* Seleção: manter texto preto mesmo quando selecionado */
+#completion-time-alert::selection, #completion-time-alert *::selection { color: #000; background: #bfe9ff; }
 
 /* Tornar textos secundários brancos dentro da view do cliente para melhor contraste */
 /* Alvo ampliado para cobrir variações (cards, listas, parágrafos) */
