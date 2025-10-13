@@ -220,6 +220,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   padding: .25rem .5rem;
   font-size: .875rem;
 }
+#admin-stats-section .compact-50 {
+  font-size: 0.75rem !important; /* ~50% vs padrão desktop (~1rem -> 0.75rem + menor padding) */
+  padding: .2rem .4rem !important;
+}
 #admin-stats-section label.form-label {
   margin-bottom: .25rem;
 }
