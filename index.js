@@ -29,8 +29,6 @@ function init() {
     genTimes();
   // Variável para guardar o agendamento a ser notificado
   let currentNotificationAppointment = null;
-    // Guarda referência para a aba/janela do WhatsApp para reutilizar sem abrir novas
-    let whatsAppWindowRef = null;
     // Admin auth token (JWT) for protected API calls
     let adminToken = localStorage.getItem('adminToken') || null;
     const setAdminToken = (t) => {
@@ -747,22 +745,9 @@ function init() {
       const message = whatsAppMessageTextarea.value || buildWhatsappMessage(currentNotificationAppointment);
       const phone = currentNotificationAppointment.telefoneCliente.replace(/\D/g, '');
       
-            // Abre ou reutiliza a mesma aba/janela do WhatsApp com a mensagem preenchida
-            const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
-            const targetName = 'whatsapp_chat_tab';
-            try {
-                if (whatsAppWindowRef && !whatsAppWindowRef.closed) {
-                    // Reutiliza a aba existente
-                    try { whatsAppWindowRef.location.href = url; } catch(_) { /* cross-origin set allowed for navigation */ }
-                    try { whatsAppWindowRef.focus(); } catch(_) {}
-                } else {
-                    // Abre uma nova aba nomeada (será reutilizada nas próximas vezes)
-                    whatsAppWindowRef = window.open(url, targetName);
-                }
-            } catch(_) {
-                // Fallback simples
-                window.open(url, targetName);
-            }
+                          // Abrir no MESMO separador/guia (não cria nova guia)
+                          const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
+                          window.location.assign(url);
       
       // Esconde o modal e limpa a referência do agendamento
       whatsAppModal.hide();
