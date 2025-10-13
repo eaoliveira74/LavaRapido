@@ -1283,7 +1283,7 @@ function init() {
                 const legendEl = document.getElementById('stats-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
                 if (stripEl) stripEl.innerHTML = '';
-                if (legendEl) legendEl.innerHTML = 'Legenda:';
+                if (legendEl) legendEl.innerHTML = '';
 
                 vc.days.forEach(w => {
                     const d = new Date(w.date + 'T00:00:00');
@@ -1325,7 +1325,7 @@ function init() {
                 const legendEl = document.getElementById('stats-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
                 if (stripEl) stripEl.innerHTML = '';
-                if (legendEl) legendEl.innerHTML = 'Legenda:';
+                if (legendEl) legendEl.innerHTML = '';
 
                 if (days && days.length) {
                     days.forEach(w => {
@@ -1362,7 +1362,7 @@ function init() {
                     const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
                     const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';
                     const infoEl = document.getElementById('stats-weather');
-                    if (infoEl) infoEl.textContent = `Dados meteorológicos indisponíveis. ${attempted}${cepMsg}`;
+                    if (infoEl) infoEl.textContent = '';
                     console.debug('Weather unavailable for', { start, end, lat, lon, cepFeedback: cepFeedback && cepFeedback.textContent });
                 }
             }
