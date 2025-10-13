@@ -195,6 +195,23 @@ export default {
       if (!admin) return bad('unauthorized', 401);
       const id = path.split('/')[3];
       await env.DB.prepare(`UPDATE appointments SET status = 'Concluído' WHERE id = ?`).bind(id).run();
+      // Increment daily stats for this appointment date
+      try {
+        const row = await env.DB.prepare(`SELECT data, servico_id FROM appointments WHERE id = ?`).bind(id).first();
+        if (row && row.data) {
+          // resolve price from service id when known; fallback 0 if unknown
+          let price = 0;
+          // Optional: service price list can be mirrored here; keep minimal to avoid drift
+          const PRICE_MAP = {
+            'lavagem-simples': 15.00,
+            'lavagem-completa': 25.00,
+            'enceramento': 40.00,
+            'lavagem-motor': 30.00
+          };
+          if (row.servico_id && PRICE_MAP[row.servico_id] != null) price = PRICE_MAP[row.servico_id];
+          await env.DB.prepare(`INSERT INTO stats_daily (date, cars_washed, total_revenue) VALUES (?, 1, ?) ON CONFLICT(date) DO UPDATE SET cars_washed = cars_washed + 1, total_revenue = total_revenue + excluded.total_revenue`).bind(row.data, price).run();
+        }
+      } catch {}
       const row = await env.DB.prepare(`SELECT id, nome_cliente as nomeCliente, telefone_cliente as telefoneCliente, servico_id as servicoId, horario, data, observacoes, status, comprovante_key as comprovanteKey, created_at as createdAt FROM appointments WHERE id = ?`).bind(id).first();
       if (!row) return bad('not found', 404);
       row.comprovantePath = row.comprovanteKey ? ('/uploads/' + row.comprovanteKey) : null;
@@ -259,6 +276,32 @@ export default {
       const before = url.searchParams.get('before') || (new Date().toISOString().slice(0, 10));
       const res = await pruneOldAppointments(env, before);
       return ok({ ok: true, before, ...res });
+    }
+
+    // Admin: upsert/read daily stats for charts (cars washed, revenue, rain %)
+    if (path === '/api/admin/stats-daily') {
+      const admin = await requireAdmin();
+      if (!admin) return bad('unauthorized', 401);
+      if (request.method === 'GET') {
+        // Range query: start=YYYY-MM-DD&end=YYYY-MM-DD
+        const start = url.searchParams.get('start');
+        const end = url.searchParams.get('end');
+        if (!start || !end) return bad('start and end required', 400);
+        const rs = await env.DB.prepare(`SELECT date, cars_washed as carsWashed, total_revenue as totalRevenue, rain_probability as rainProbability FROM stats_daily WHERE date BETWEEN ? AND ? ORDER BY date ASC`).bind(start, end).all();
+        return ok(rs?.results || []);
+      } else if (request.method === 'POST') {
+        // Upsert for a single date
+        try {
+          const body = await request.json();
+          const date = body.date;
+          if (!date) return bad('date required', 400);
+          const cars = Number(body.carsWashed || 0);
+          const revenue = Number(body.totalRevenue || 0);
+          const rain = (body.rainProbability == null) ? null : Number(body.rainProbability);
+          await env.DB.prepare(`INSERT INTO stats_daily (date, cars_washed, total_revenue, rain_probability) VALUES (?, ?, ?, ?) ON CONFLICT(date) DO UPDATE SET cars_washed = excluded.cars_washed, total_revenue = excluded.total_revenue, rain_probability = excluded.rain_probability`).bind(date, cars, revenue, rain).run();
+          return ok({ ok: true });
+        } catch { return bad('invalid body', 400); }
+      }
     }
 
     return bad('Not found', 404);

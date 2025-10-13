@@ -1130,12 +1130,85 @@ function init() {
         }
     }
 
+    // Fetch aggregated daily stats from backend (admin)
+    async function fetchDailyStats(startISO, endISO) {
+        if (!adminToken) return [];
+        const backend = getBackendBase();
+        const url = `${backend}/api/admin/stats-daily?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`;
+        try {
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+            if (!res.ok) return [];
+            return await res.json();
+        } catch { return []; }
+    }
+
+    // Upsert rain probability for specific dates (best effort, small ranges only)
+    async function upsertRainProbabilities(days) {
+        if (!adminToken || !Array.isArray(days) || days.length === 0) return;
+        if (days.length > 62) return; // avoid spamming for large ranges
+        const backend = getBackendBase();
+        await Promise.all(days.map(async d => {
+            const rp = (d.precipprob != null) ? Number(d.precipprob) : null;
+            if (rp == null || isNaN(rp)) return;
+            try {
+                await fetch(`${backend}/api/admin/stats-daily`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+                    body: JSON.stringify({ date: d.date, rainProbability: rp })
+                });
+            } catch {}
+        }));
+    }
+
     async function renderStats() {
         const range = statsRange.value || 'month';
         const refDate = statsDate.value || getTodayString();
-            // prefer serverAppointments when available (admin)
+        // dates bounds for queries and weather fetch
+        let start = refDate, end = refDate;
+        // Build labels from DB stats when available; fall back to client aggregation if not
+        let labels = [];
+        let counts = [];
+        let revenue = [];
+        // First, determine range bounds similar to previous logic
+        const computeBounds = (range, refDate) => {
+            if (range === 'day') return { start: refDate, end: refDate };
+            const d = new Date(refDate + 'T00:00:00');
+            if (range === 'week') {
+                const day = d.getDay(); // 0-6, Sun-Sat
+                const diffToMon = (day + 6) % 7; // days since Monday
+                const monday = new Date(d); monday.setDate(d.getDate() - diffToMon);
+                const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+                return { start: monday.toISOString().slice(0,10), end: sunday.toISOString().slice(0,10) };
+            }
+            if (range === 'month') {
+                const y = d.getFullYear(); const m = d.getMonth();
+                const first = new Date(Date.UTC(y, m, 1));
+                const last = new Date(Date.UTC(y, m + 1, 0));
+                return { start: first.toISOString().slice(0,10), end: last.toISOString().slice(0,10) };
+            }
+            if (range === 'year') {
+                const y = d.getFullYear();
+                return { start: `${y}-01-01`, end: `${y}-12-31` };
+            }
+            return { start: refDate, end: refDate };
+        };
+        ({ start, end } = computeBounds(range, refDate));
+
+        // Try DB-backed daily stats
+        const dbStats = await fetchDailyStats(start, end);
+        if (Array.isArray(dbStats) && dbStats.length > 0) {
+            labels = dbStats.map(r => {
+                const dt = new Date(r.date + 'T00:00:00');
+                return isNaN(dt.getTime()) ? r.date : dt.toLocaleDateString('pt-BR');
+            });
+            counts = dbStats.map(r => r.carsWashed || 0);
+            revenue = dbStats.map(r => r.totalRevenue || 0);
+        } else {
+            // fallback: aggregate from appointments on client
             const sourceAppointments = (adminToken && serverAppointments) ? serverAppointments : appointments;
             const data = aggregateAppointments(range, refDate, sourceAppointments);
+            labels = data.labels; counts = data.counts; revenue = data.revenue;
+        }
 
         // destroy previous chart if exists
         if (statsChart) { statsChart.destroy(); statsChart = null; }
@@ -1145,10 +1218,10 @@ function init() {
             statsChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: data.labels,
+                labels,
                 datasets: [
-                    { label: 'Veículos lavados', data: data.counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
-                    { label: 'Faturamento (R$)', data: data.revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1' }
+                    { label: 'Veículos lavados', data: counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
+                    { label: 'Faturamento (R$)', data: revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1' }
                 ]
             },
                 options: {
@@ -1167,34 +1240,7 @@ function init() {
                 }
         });
 
-        // fetch weather for date range (simple bounding: use first and last label dates when possible)
-        // Open-Meteo expects dates in YYYY-MM-DD. Our labels are localized (pt-BR) so convert when needed.
-        let start = refDate, end = refDate;
-        if (data.labels && data.labels.length > 1) {
-            const toISO = (lbl) => {
-                if (!lbl) return refDate;
-                // most labels are in 'dd/mm/yyyy'
-                const parts = lbl.split('/');
-                if (parts.length === 3) {
-                    const [d, m, y] = parts;
-                    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                }
-                // fallback to Date parse
-                const dt = new Date(lbl + 'T00:00:00');
-                return isNaN(dt.getTime()) ? refDate : dt.toISOString().split('T')[0];
-            };
-            // For most ranges, convert the first/last label to ISO dates.
-            // Special-case the 'year' range because labels are month names (e.g., 'jan', 'fev')
-            if (range === 'year') {
-                // Use the reference date's year and query the full year
-                const year = new Date(refDate + 'T00:00:00').getFullYear();
-                start = `${year}-01-01`;
-                end = `${year}-12-31`;
-            } else {
-                start = toISO(data.labels[0]);
-                end = toISO(data.labels[data.labels.length - 1]);
-            }
-        }
+        // Weather fetch uses computed start/end bounds
         // resolve CEP input to lat/lon if provided
         // resolve CEP input to lat/lon if provided, using cache when possible
         const cepInput = document.getElementById('stats-cep');
@@ -1260,6 +1306,8 @@ function init() {
 
                 if (infoEl) infoEl.textContent = 'Previsão meteorológica (Visual Crossing).';
                 weather = vc.days;
+                // best-effort: persist rain probability into daily stats for chart usage later
+                await upsertRainProbabilities(vc.days);
             } else {
                 // Fallback to Open-Meteo: use same strip rendering but normalize fields
                 const days = await fetchWeatherSummary(start, end, lat, lon);
@@ -1299,6 +1347,7 @@ function init() {
                     }
                     if (infoEl) infoEl.textContent = 'Previsão meteorológica.';
                     weather = days;
+                    await upsertRainProbabilities(days);
                 } else {
                     const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
                     const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';

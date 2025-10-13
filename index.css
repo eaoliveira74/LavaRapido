@@ -214,6 +214,16 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   border-color: rgba(255,255,255,0.06) !important;
 }
 
+/* Admin stats: compact controls */
+#admin-stats-section .form-select-sm,
+#admin-stats-section .form-control-sm {
+  padding: .25rem .5rem;
+  font-size: .875rem;
+}
+#admin-stats-section label.form-label {
+  margin-bottom: .25rem;
+}
+
 /* Observações textarea: force white text and placeholder */
 #observacoes {
   color: #ffffff !important;
