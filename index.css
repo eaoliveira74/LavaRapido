@@ -224,6 +224,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   font-size: 0.75rem !important; /* ~50% vs padrão desktop (~1rem -> 0.75rem + menor padding) */
   padding: .2rem .4rem !important;
 }
+#admin-stats-section .stats-ctrl {
+  min-width: 160px;
+  width: 220px; /* confortável para label/valor */
+}
 #admin-stats-section .len-50 {
   width: 50% !important;
 }
@@ -234,6 +238,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 @media (max-width: 575.98px) {
   #admin-stats-section .len-50 { width: 100% !important; }
   #admin-stats-section .len-30 { width: 100% !important; }
+  #admin-stats-section .stats-ctrl { width: 100% !important; min-width: 0; }
 }
 #admin-stats-section label.form-label {
   margin-bottom: .25rem;
