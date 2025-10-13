@@ -128,6 +128,9 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   background-color: #1e293b;
 }
 
+/* Forçar texto preto para a previsão de término */
+#completion-time-alert { color: #000 !important; }
+
 /* Tornar textos secundários brancos dentro da view do cliente para melhor contraste */
 /* Alvo ampliado para cobrir variações (cards, listas, parágrafos) */
 #client-view .text-secondary,
