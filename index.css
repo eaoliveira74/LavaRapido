@@ -128,18 +128,18 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   background-color: #1e293b;
 }
 
-/* Previsão de término: fundo cinza claro e texto branco */
+/* Previsão de término: fundo cinza claro e texto quase preto (#080808) */
 #completion-time-alert {
-  color: #fff !important;
+  color: #080808 !important;
   background-color: #f1f5f9 !important; /* cinza claro (slate-100) */
   border-color: #e2e8f0 !important;     /* cinza um pouco mais escuro (slate-200) */
 }
 
-#completion-time-alert, #completion-time-alert * { color: #fff !important; }
-/* Seleção: manter fonte branca */
-#completion-time-alert::selection, #completion-time-alert *::selection { color: #fff; background: #cbd5e1; }
+#completion-time-alert, #completion-time-alert * { color: #080808 !important; }
+/* Seleção: manter cor do texto quase preto durante seleção */
+#completion-time-alert::selection, #completion-time-alert *::selection { color: #080808; background: #cbd5e1; }
 /* Aumentar especificidade dentro da view do cliente */
-#client-view #completion-time-alert, #client-view #completion-time-alert * { color: #fff !important; }
+#client-view #completion-time-alert, #client-view #completion-time-alert * { color: #080808 !important; }
 /* Tornar textos secundários brancos dentro da view do cliente para melhor contraste */
 /* Alvo ampliado para cobrir variações (cards, listas, parágrafos) */
 #client-view .text-secondary,

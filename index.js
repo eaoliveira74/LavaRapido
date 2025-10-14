@@ -477,7 +477,7 @@ function init() {
                         completionTimeAlert.classList.remove('alert-info');
                         completionTimeAlert.classList.add('alert-secondary');
                         // Forçar estilos inline como !important para prevalecer sobre CSS com !important
-                        completionTimeAlert.style.setProperty('color', '#fff', 'important');
+                        completionTimeAlert.style.setProperty('color', '#080808', 'important');
                         completionTimeAlert.style.setProperty('background-color', '#f1f5f9', 'important');
                         completionTimeAlert.style.setProperty('border-color', '#e2e8f0', 'important');
                     } catch(_) {}
