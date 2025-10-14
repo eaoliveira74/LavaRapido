@@ -472,7 +472,14 @@ function init() {
           const newHours = Math.floor(totalMinutes / 60) % 24;
           const newMinutes = totalMinutes % 60;
           const completionTime = `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
-          completionTimeAlert.textContent = `Previsão de término: ${completionTime}`;
+                    completionTimeAlert.textContent = `Previsão de término: ${completionTime}`;
+                    try {
+                        completionTimeAlert.classList.remove('alert-info');
+                        completionTimeAlert.classList.add('alert-secondary');
+                        completionTimeAlert.style.color = '#000';
+                        completionTimeAlert.style.backgroundColor = '#000';
+                        completionTimeAlert.style.borderColor = '#e2e8f0';
+                    } catch(_) {}
           completionTimeAlert.classList.remove('d-none');
       });
   });

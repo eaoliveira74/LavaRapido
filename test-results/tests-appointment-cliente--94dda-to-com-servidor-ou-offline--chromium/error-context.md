@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: "Acessibilidade:"
+    - generic [ref=e5]:
+      - checkbox "Alto contraste" [ref=e6]
+      - generic [ref=e7]: Alto contraste
+    - generic [ref=e8]:
+      - checkbox "Texto maior" [ref=e9]
+      - generic [ref=e10]: Texto maior
+    - button "Restaurar padrão" [ref=e11] [cursor=pointer]
+    - button "Limpar cache" [ref=e12] [cursor=pointer]
+    - button "Testar tempo" [ref=e13] [cursor=pointer]
+  - button "Alternar barra de acessibilidade (Alt+M)" [ref=e14] [cursor=pointer]: ☰
+  - banner [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Sistema de Agendamento - Lava Rápido Versátil" [level=1] [ref=e18]
+        - paragraph [ref=e19]: Gerencie seus agendamentos de forma simples e eficiente.
+        - generic [ref=e20]:
+          - 'generic "Hoje: Indeterminado — 0°C" [ref=e21]':
+            - generic [ref=e22]: Hoje
+            - generic [ref=e24]:
+              - generic [ref=e25]: 0°C
+              - generic [ref=e26]: Indeterminado
+          - 'generic "Amanhã: Chuvoso — 0°C" [ref=e27]':
+            - generic [ref=e28]: Amanhã
+            - generic [ref=e29]:
+              - img [ref=e31]
+              - generic [ref=e34]:
+                - generic [ref=e35]: 0°C
+                - generic [ref=e36]: Chuvoso
+      - button "Trocar Perfil" [ref=e37] [cursor=pointer]
+  - main [ref=e38]:
+    - generic [ref=e40]:
+      - generic [ref=e43]:
+        - heading "Consultar Vagas" [level=2] [ref=e44]
+        - generic [ref=e45]: "Selecione uma data:"
+        - textbox "Selecione uma data:" [ref=e46]: 2025-10-12
+        - heading "Horários para 12/10/2025" [level=3] [ref=e47]
+        - generic [ref=e48]:
+          - generic [ref=e50]: 08:00
+          - generic [ref=e52]: 08:30
+          - generic [ref=e54]: 09:00
+          - generic [ref=e56]: 09:30
+          - generic [ref=e58]: 10:00
+          - generic [ref=e60]: 10:30
+          - generic [ref=e62]: 11:00
+          - generic [ref=e64]: 11:30
+          - generic [ref=e66]: 12:00
+          - generic [ref=e68]: 12:30
+          - generic [ref=e70]: 13:00
+          - generic [ref=e72]: 13:30
+          - generic [ref=e74]: 14:00
+          - generic [ref=e76]: 14:30
+          - generic [ref=e78]: 15:00
+          - generic [ref=e80]: 15:30
+          - generic [ref=e82]: 16:00
+          - generic [ref=e84]: 16:30
+          - generic [ref=e86]: 17:00
+        - generic [ref=e88]:
+          - generic [ref=e91]: Disponível
+          - generic [ref=e94]: Passado (indisponível)
+          - generic [ref=e97]: Reservado
+      - generic [ref=e98]:
+        - generic [ref=e100]:
+          - heading "Novo Agendamento" [level=2] [ref=e101]
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - generic [ref=e105]: "Seu Nome:"
+                - textbox "Seu Nome:" [ref=e106]
+              - generic [ref=e107]:
+                - generic [ref=e108]: "Seu Telefone/WhatsApp:"
+                - textbox "Seu Telefone/WhatsApp:" [ref=e109]:
+                  - /placeholder: (XX) XXXXX-XXXX
+            - generic [ref=e110]:
+              - generic [ref=e111]: "Tipo de Serviço:"
+              - combobox "Tipo de Serviço:" [ref=e112]:
+                - option "Selecione um serviço"
+                - option "Lavagem Simples - R$ 15.00 (30 min)" [selected]
+                - option "Lavagem Completa - R$ 25.00 (60 min)"
+                - option "Enceramento - R$ 40.00 (90 min)"
+                - option "Lavagem do Motor - R$ 30.00 (45 min)"
+            - generic [ref=e113]:
+              - generic [ref=e114]: "Horário:"
+              - combobox "Horário:" [ref=e115]:
+                - option "Selecione um horário" [selected]
+            - generic [ref=e116]:
+              - generic [ref=e117]: "Observações:"
+              - textbox "Observações:" [ref=e118]:
+                - /placeholder: Informações adicionais sobre o veículo ou serviço
+            - button "Agendar Serviço" [ref=e119] [cursor=pointer]
+        - generic [ref=e121]:
+          - heading "Comprovante de Pagamento" [level=3] [ref=e122]
+          - paragraph [ref=e123]: Se desejar reservar imediatamente, anexe o comprovante junto com o agendamento.
+          - generic [ref=e124]:
+            - generic [ref=e125]: "Anexar Comprovante (apenas PDF):"
+            - button "Anexar Comprovante (apenas PDF):" [ref=e126] [cursor=pointer]
+```
