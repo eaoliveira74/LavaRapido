@@ -466,9 +466,9 @@ function init() {
               completionTimeAlert.classList.add('d-none');
               return;
           }
-          const service = services.find(s => s.id === serviceId);
+          // Previsão de término deve ser sempre 30 minutos após o horário escolhido
           const [hours, minutes] = time.split(':').map(Number);
-          const totalMinutes = hours * 60 + minutes + service.duration;
+          const totalMinutes = hours * 60 + minutes + 30;
           const newHours = Math.floor(totalMinutes / 60) % 24;
           const newMinutes = totalMinutes % 60;
           const completionTime = `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
@@ -476,9 +476,10 @@ function init() {
                     try {
                         completionTimeAlert.classList.remove('alert-info');
                         completionTimeAlert.classList.add('alert-secondary');
-                        completionTimeAlert.style.color = '#000';
-                        completionTimeAlert.style.backgroundColor = '#000';
-                        completionTimeAlert.style.borderColor = '#e2e8f0';
+                        // Forçar estilos inline como !important para prevalecer sobre CSS com !important
+                        completionTimeAlert.style.setProperty('color', '#000', 'important');
+                        completionTimeAlert.style.setProperty('background-color', '#000', 'important');
+                        completionTimeAlert.style.setProperty('border-color', '#e2e8f0', 'important');
                     } catch(_) {}
           completionTimeAlert.classList.remove('d-none');
       });
