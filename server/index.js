@@ -24,6 +24,15 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 if (!fs.existsSync(APPOINTMENTS_FILE)) fs.writeFileSync(APPOINTMENTS_FILE, '[]');
+const STATS_FILE = path.join(DATA_DIR, 'stats-daily.json');
+if (!fs.existsSync(STATS_FILE)) fs.writeFileSync(STATS_FILE, '{}');
+
+const SERVICE_PRICE_MAP = {
+  'lavagem-simples': 15.00,
+  'lavagem-completa': 25.00,
+  'enceramento': 40.00,
+  'lavagem-motor': 30.00
+};
 
 // Funções simples de leitura/escrita no armazenamento em disco
 function readAppointments() {
@@ -36,6 +45,87 @@ function readAppointments() {
 }
 function writeAppointments(arr) {
   fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(arr, null, 2));
+}
+
+function readStatsStore() {
+  try {
+    const raw = fs.readFileSync(STATS_FILE, 'utf8');
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function writeStatsStore(obj) {
+  fs.writeFileSync(STATS_FILE, JSON.stringify(obj || {}, null, 2));
+}
+
+function normalizeDateISO(value) {
+  if (!value) return null;
+  return value.toString().slice(0, 10);
+}
+
+function withinRange(iso, start, end) {
+  if (!iso) return false;
+  if (start && iso < start) return false;
+  if (end && iso > end) return false;
+  return true;
+}
+
+function getServicePrice(servicoId) {
+  if (!servicoId) return 0;
+  const direct = SERVICE_PRICE_MAP[servicoId];
+  if (typeof direct === 'number' && !Number.isNaN(direct)) return direct;
+  return 0;
+}
+
+function aggregateStats(appointments, startISO, endISO) {
+  const map = new Map();
+  (appointments || []).forEach((ap) => {
+    if (!ap) return;
+    const status = (ap.status || '').toLowerCase();
+    if (!(status.includes('concluído') || status.includes('concluido'))) return;
+    const iso = normalizeDateISO(ap.data);
+    if (!withinRange(iso, startISO, endISO)) return;
+    const entry = map.get(iso) || { date: iso, carsWashed: 0, totalRevenue: 0, rainProbability: null };
+    entry.carsWashed += 1;
+    entry.totalRevenue = Math.round((entry.totalRevenue + getServicePrice(ap.servicoId)) * 100) / 100;
+    map.set(iso, entry);
+  });
+  return map;
+}
+
+function recomputeStatsForDates(dates, appointments) {
+  const unique = Array.from(new Set((dates || []).map(normalizeDateISO))).filter(Boolean);
+  if (!unique.length) return;
+  const store = readStatsStore();
+  unique.forEach((iso) => {
+    const aggregated = aggregateStats(appointments, iso, iso);
+    const entry = aggregated.get(iso);
+    const current = store[iso] || {};
+    if (!entry) {
+      if (current.rainProbability !== undefined) {
+        store[iso] = {
+          date: iso,
+          carsWashed: 0,
+          totalRevenue: 0,
+          rainProbability: current.rainProbability
+        };
+      } else {
+        delete store[iso];
+      }
+      return;
+    }
+    store[iso] = {
+      date: iso,
+      carsWashed: entry.carsWashed,
+      totalRevenue: entry.totalRevenue,
+      rainProbability: current.rainProbability !== undefined ? current.rainProbability : entry.rainProbability
+    };
+  });
+  writeStatsStore(store);
 }
 
 // Configuração do Multer com limite de 1 MB e filtro de tipo de arquivo
@@ -167,6 +257,18 @@ app.post('/api/appointments/:id/confirm', requireAdmin, (req, res) => {
   res.json(ap);
 });
 
+// Marca um agendamento como concluído (admin)
+app.post('/api/appointments/:id/complete', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const appointments = readAppointments();
+  const ap = appointments.find(a => a.id === id);
+  if (!ap) return res.status(404).json({ error: 'not found' });
+  ap.status = 'Concluído';
+  writeAppointments(appointments);
+  recomputeStatsForDates([ap.data], appointments);
+  res.json(ap);
+});
+
 // Exclui um agendamento (admin)
 app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
   const id = req.params.id;
@@ -182,6 +284,9 @@ app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
     }
   }
   writeAppointments(appointments);
+  if ((removed.status || '').toLowerCase().includes('conclu')) {
+    recomputeStatsForDates([removed.data], appointments);
+  }
   res.json({ ok: true });
 });
 
@@ -200,6 +305,81 @@ try {
 app.get('/health', (req, res) => {
   const appointments = readAppointments();
   res.json({ status: 'ok', now: new Date().toISOString(), appointments: appointments.length });
+});
+
+// Estatísticas agregadas diárias (público)
+app.get('/api/stats-daily', (req, res) => {
+  const start = normalizeDateISO(req.query.start);
+  const end = normalizeDateISO(req.query.end);
+  if (!start || !end) return res.status(400).json({ error: 'start and end required' });
+  const appointments = readAppointments();
+  const aggregated = aggregateStats(appointments, start, end);
+  const persisted = readStatsStore();
+  const merged = new Map(aggregated);
+  Object.entries(persisted || {}).forEach(([date, data]) => {
+    const iso = normalizeDateISO(date);
+    if (!withinRange(iso, start, end)) return;
+    const entry = merged.get(iso) || { date: iso, carsWashed: 0, totalRevenue: 0, rainProbability: null };
+    if (typeof data.carsWashed === 'number' && data.carsWashed > entry.carsWashed) entry.carsWashed = data.carsWashed;
+    if (typeof data.totalRevenue === 'number' && data.totalRevenue > entry.totalRevenue) entry.totalRevenue = Math.round(data.totalRevenue * 100) / 100;
+    if (data.rainProbability !== undefined) entry.rainProbability = (data.rainProbability === null || data.rainProbability === '') ? null : Number(data.rainProbability);
+    merged.set(iso, entry);
+  });
+  const results = Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date));
+  res.json(results);
+});
+
+// Estatísticas agregadas (admin) para leitura/atualização manual (ex: chuva)
+app.all('/api/admin/stats-daily', requireAdmin, (req, res) => {
+  if (req.method === 'GET') {
+    const start = normalizeDateISO(req.query.start);
+    const end = normalizeDateISO(req.query.end);
+    if (!start || !end) return res.status(400).json({ error: 'start and end required' });
+    const appointments = readAppointments();
+    const aggregated = aggregateStats(appointments, start, end);
+    const persisted = readStatsStore();
+    const merged = new Map(aggregated);
+    Object.entries(persisted || {}).forEach(([date, data]) => {
+      const iso = normalizeDateISO(date);
+      if (!withinRange(iso, start, end)) return;
+      const entry = merged.get(iso) || { date: iso, carsWashed: 0, totalRevenue: 0, rainProbability: null };
+      if (typeof data.carsWashed === 'number' && data.carsWashed > entry.carsWashed) entry.carsWashed = data.carsWashed;
+      if (typeof data.totalRevenue === 'number' && data.totalRevenue > entry.totalRevenue) entry.totalRevenue = Math.round(data.totalRevenue * 100) / 100;
+      if (data.rainProbability !== undefined) entry.rainProbability = (data.rainProbability === null || data.rainProbability === '') ? null : Number(data.rainProbability);
+      merged.set(iso, entry);
+    });
+    const results = Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date));
+    return res.json(results);
+  }
+
+  if (req.method === 'POST') {
+    const { date, carsWashed, totalRevenue, rainProbability } = req.body || {};
+    const iso = normalizeDateISO(date);
+    if (!iso) return res.status(400).json({ error: 'date required' });
+    const store = readStatsStore();
+    const current = store[iso] || {};
+    current.date = iso;
+    if (carsWashed !== undefined) {
+      const n = Number(carsWashed);
+      if (!Number.isNaN(n)) current.carsWashed = n;
+    }
+    if (totalRevenue !== undefined) {
+      const n = Number(totalRevenue);
+      if (!Number.isNaN(n)) current.totalRevenue = Math.round(n * 100) / 100;
+    }
+    if (rainProbability !== undefined) {
+      if (rainProbability === null || rainProbability === '') current.rainProbability = null;
+      else {
+        const n = Number(rainProbability);
+        if (!Number.isNaN(n)) current.rainProbability = n;
+      }
+    }
+    store[iso] = current;
+    writeStatsStore(store);
+    return res.json({ ok: true });
+  }
+
+  res.status(405).json({ error: 'method not allowed' });
 });
 
 const PORT = process.env.PORT || 4000;

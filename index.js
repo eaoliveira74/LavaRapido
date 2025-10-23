@@ -1366,32 +1366,77 @@ function init() {
             }
         }
         let weather = null;
+        const normalizeConditionLabel = (raw) => {
+            const text = (raw || '').toString();
+            const lower = text.toLowerCase();
+            if (lower.includes('ensolar') || lower.includes('sun') || lower.includes('clear')) return 'Ensolarado';
+            if (lower.includes('nublado') || lower.includes('cloud') || lower.includes('overcast')) return 'Nublado';
+            if (lower.includes('chuv') || lower.includes('rain') || lower.includes('storm') || lower.includes('precip')) return 'Chuvoso';
+            return text || 'Indeterminado';
+        };
+
+        const createWeatherDayIcon = (day) => {
+            if (!day) return null;
+            const isoCandidate = (day.date || day.datetime || '').toString();
+            const iso = isoCandidate.slice(0, 10);
+            let label = iso;
+            if (iso) {
+                const parsed = new Date(iso + 'T00:00:00');
+                if (!isNaN(parsed.getTime())) label = parsed.toLocaleDateString('pt-BR');
+            }
+            if (!label) label = day.displayDate || day.dateStr || '-';
+            const baseCondition = day.conditionSimple || day.label || day.conditions || '';
+            const condition = normalizeConditionLabel(baseCondition);
+            const conditionKey = condition.toLowerCase();
+            let iconSvg = '';
+            if (conditionKey.startsWith('ensolar')) iconSvg = ICON_SUN;
+            else if (conditionKey.startsWith('nublado')) iconSvg = ICON_CLOUD;
+            else if (conditionKey.startsWith('chuv')) iconSvg = ICON_RAIN;
+            const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
+            const tooltipDetail = (day.conditions || baseCondition || condition || '').toString();
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'day-icon';
+            dayDiv.setAttribute('role', 'img');
+            dayDiv.setAttribute('aria-label', `${label}: ${condition}`);
+            const precipTxt = (precip != null && !Number.isNaN(precip)) ? ` (${precip}% precip)` : '';
+            dayDiv.title = `${label}: ${tooltipDetail || condition}${precipTxt}`;
+            dayDiv.innerHTML = `${iconSvg}<div class="label">${label}</div>`;
+            return dayDiv;
+        };
+
+        const populateWeatherStrip = (days) => {
+            const stripEl = document.getElementById('stats-weather-strip');
+            if (!stripEl) return;
+            const isMonthly = (range === 'month');
+            if (isMonthly) {
+                stripEl.classList.add('two-row-grid');
+                stripEl.classList.remove('d-flex');
+                stripEl.classList.remove('align-items-center');
+                stripEl.style.display = '';
+            } else {
+                stripEl.classList.remove('two-row-grid');
+                stripEl.style.display = '';
+                if (!stripEl.classList.contains('d-flex')) stripEl.classList.add('d-flex');
+                if (!stripEl.classList.contains('gap-2')) stripEl.classList.add('gap-2');
+                stripEl.classList.add('align-items-center');
+            }
+            stripEl.innerHTML = '';
+            if (!Array.isArray(days) || days.length === 0) return;
+            days.forEach(day => {
+                const iconEl = createWeatherDayIcon(day);
+                if (iconEl) stripEl.appendChild(iconEl);
+            });
+        };
+
         try {
             // Prefere o proxy do Visual Crossing se estiver disponível
             const vc = await fetchVisualWeather(lat, lon, start, end);
             if (vc && vc.days) {
                 // Visual Crossing: renderiza faixas com ícones e rótulos localizados
-                const stripEl = document.getElementById('stats-weather-strip');
                 const legendEl = document.getElementById('stats-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
-                if (stripEl) stripEl.innerHTML = '';
                 if (legendEl) legendEl.innerHTML = '';
-
-                vc.days.forEach(w => {
-                    const d = new Date(w.date + 'T00:00:00');
-                    const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
-                    const condition = w.conditionSimple || '';
-                    const iconSvg = (condition === 'Ensolarado') ? ICON_SUN : (condition === 'Nublado' ? ICON_CLOUD : (condition === 'Chuvoso' ? ICON_RAIN : ''));
-                    if (stripEl) {
-                        const dayDiv = document.createElement('div');
-                        dayDiv.className = 'day-icon';
-                        dayDiv.setAttribute('role', 'img');
-                        dayDiv.setAttribute('aria-label', `${lbl}: ${condition}`);
-                        dayDiv.title = `${lbl}: ${w.conditions || condition} ${w.precipprob ? `(${w.precipprob}% precip)` : ''}`;
-                        dayDiv.innerHTML = `${iconSvg}<div class="label">${lbl}</div>`;
-                        stripEl.appendChild(dayDiv);
-                    }
-                });
+                populateWeatherStrip(vc.days);
 
                 // Preenche a legenda
                 if (legendEl) {
@@ -1413,28 +1458,13 @@ function init() {
             } else {
                 // Alternativa com Open-Meteo mantendo o mesmo formato de visualização
                 const days = await fetchWeatherSummary(start, end, lat, lon);
-                const stripEl = document.getElementById('stats-weather-strip');
                 const legendEl = document.getElementById('stats-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
-                if (stripEl) stripEl.innerHTML = '';
                 if (legendEl) legendEl.innerHTML = '';
 
+                populateWeatherStrip(days);
+
                 if (days && days.length) {
-                    days.forEach(w => {
-                        const d = new Date(w.date + 'T00:00:00');
-                        const lbl = isNaN(d.getTime()) ? w.date : d.toLocaleDateString('pt-BR');
-                        const condition = w.conditionSimple || w.label || '';
-                        const iconSvg = (condition === 'Ensolarado') ? ICON_SUN : (condition === 'Nublado' ? ICON_CLOUD : (condition === 'Chuvoso' ? ICON_RAIN : ''));
-                        if (stripEl) {
-                            const dayDiv = document.createElement('div');
-                            dayDiv.className = 'day-icon';
-                            dayDiv.setAttribute('role', 'img');
-                            dayDiv.setAttribute('aria-label', `${lbl}: ${condition}`);
-                            dayDiv.title = `${lbl}: ${condition}`;
-                            dayDiv.innerHTML = `${iconSvg}<div class="label">${lbl}</div>`;
-                            stripEl.appendChild(dayDiv);
-                        }
-                    });
                     // Legenda
                     if (legendEl) {
                         legendEl.innerHTML = '';
@@ -1453,7 +1483,6 @@ function init() {
                 } else {
                     const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
                     const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';
-                    const infoEl = document.getElementById('stats-weather');
                     if (infoEl) infoEl.textContent = '';
                     console.debug('Weather unavailable for', { start, end, lat, lon, cepFeedback: cepFeedback && cepFeedback.textContent });
                 }
@@ -1468,10 +1497,11 @@ function init() {
                 const totalDays = weather.length;
                 const counts = { Ensolarado: 0, Nublado: 0, Chuvoso: 0, Indeterminado: 0 };
                 weather.forEach(d => {
-                    const raw = (d.conditionSimple || d.label || d.conditions || '').toString().toLowerCase();
-                    if (raw.includes('ensolar') || raw.includes('sun') || raw.includes('clear')) counts.Ensolarado++;
-                    else if (raw.includes('nublado') || raw.includes('cloud')) counts.Nublado++;
-                    else if (raw.includes('chuv') || raw.includes('rain') || raw.includes('storm') || raw.includes('showers')) counts.Chuvoso++;
+                    const category = normalizeConditionLabel(d.conditionSimple || d.label || d.conditions || '');
+                    const key = category.toLowerCase();
+                    if (key.startsWith('ensolar')) counts.Ensolarado++;
+                    else if (key.startsWith('nublado')) counts.Nublado++;
+                    else if (key.startsWith('chuv')) counts.Chuvoso++;
                     else counts.Indeterminado++;
                 });
                 const percent = (n) => (totalDays === 0 ? 0 : Math.round((n * 1000) / totalDays) / 10); // uma casa decimal
@@ -1495,7 +1525,12 @@ function init() {
                 const todayISO = getTodayString();
                 const today = weather.find(d => d.date === todayISO) || weather[0];
                 if (today) {
-                    const iconSvg = (today.conditionSimple === 'Ensolarado') ? ICON_SUN : (today.conditionSimple === 'Nublado' ? ICON_CLOUD : (today.conditionSimple === 'Chuvoso' ? ICON_RAIN : ''));
+                    const todayCondition = normalizeConditionLabel(today.conditionSimple || today.label || today.conditions || '');
+                    const todayKey = todayCondition.toLowerCase();
+                    let iconSvg = '';
+                    if (todayKey.startsWith('ensolar')) iconSvg = ICON_SUN;
+                    else if (todayKey.startsWith('nublado')) iconSvg = ICON_CLOUD;
+                    else if (todayKey.startsWith('chuv')) iconSvg = ICON_RAIN;
                     const tmax = Math.round(today.tempmax != null ? today.tempmax : (today.temp != null ? today.temp : 0));
                     const tmin = Math.round(today.tempmin != null ? today.tempmin : (today.temp != null ? today.temp : 0));
                     const feelsMax = (today.feelslikemax != null) ? Math.round(today.feelslikemax) : null;
@@ -1503,7 +1538,7 @@ function init() {
                     const precipProb = (today.precipprob != null) ? Math.round(today.precipprob) : null;
                     const feelsTxt = (feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : '';
                     const precipTxt = precipProb!=null ? ` · ${precipProb}% chuva` : '';
-                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${today.conditionSimple}</strong> — Máx ${tmax}°C · Min ${tmin}°C${feelsTxt}${precipTxt}`;
+                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${todayCondition}</strong> — Máx ${tmax}°C · Min ${tmin}°C${feelsTxt}${precipTxt}`;
                 }
             }
         } catch (e) { /* ignore */ }

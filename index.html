@@ -167,7 +167,12 @@
           <!-- Seção de Estatísticas (Admin) -->
           <div id="admin-stats-section" class="card mt-4 d-none">
             <div class="card-body">
-              <h3 class="card-title h5">Estatísticas</h3>
+              <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+                <h3 class="card-title h5 mb-0">Estatísticas</h3>
+                <div class="text-center text-md-end flex-grow-1">
+                  <small class="text-secondary">O CEP é usado para dados meteorológicos.</small>
+                </div>
+              </div>
               <div id="stats-controls-row" class="row g-3 mb-2 align-items-end justify-content-end">
                 <div class="col-auto">
                   <label for="stats-range" class="form-label">Período:</label>
@@ -192,11 +197,6 @@
                     <button id="stats-refresh" class="btn btn-cyan">Atualizar</button>
                     <button id="stats-export" class="btn btn-outline-light">Exportar CSV</button>
                   </div>
-                </div>
-              </div>
-              <div class="row mb-2 d-none d-sm-block">
-                <div class="col-12">
-                  <small class="text-secondary">O CEP é usado para dados meteorológicos.</small>
                 </div>
               </div>
               <div class="mb-2">
