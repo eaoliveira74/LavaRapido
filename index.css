@@ -41,6 +41,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #a11y-toolbar .form-check-input { background-color: #000; border-color: #fff; }
 #a11y-toolbar .btn-outline-secondary { color: #fff; border-color: #fff; background: #000; }
 #a11y-toolbar .btn-outline-secondary:hover { background: #111; border-color: #fff; }
+#a11y-toolbar .a11y-controls { justify-content: flex-start; }
+#a11y-toolbar .a11y-actions { align-items: flex-start; }
+#a11y-toolbar .a11y-actions .btn { min-width: 160px; }
+#a11y-toolbar .a11y-actions .btn + .btn { margin-top: 0; }
 
 /* Barra recolhida e botão flutuante de alternância */
 #a11y-toolbar.collapsed { height: 40px; overflow: hidden; padding-top: .25rem; padding-bottom: .25rem; }

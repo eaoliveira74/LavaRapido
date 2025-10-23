@@ -13,18 +13,23 @@
 
   <!-- Barra de acessibilidade -->
     <div id="a11y-toolbar" class="p-2" style="background:#f8fafc;">
-      <div class="container d-flex gap-2 align-items-center">
-        <span class="small text-secondary">Acessibilidade:</span>
-        <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="a11y-contrast" aria-checked="false">
-          <label class="form-check-label small" for="a11y-contrast">Alto contraste</label>
+      <div class="container">
+          <div class="a11y-controls d-flex flex-wrap gap-2 align-items-center">
+            <span class="small text-secondary">Acessibilidade:</span>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="a11y-contrast" aria-checked="false">
+              <label class="form-check-label small" for="a11y-contrast">Alto contraste</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="a11y-large-text" aria-checked="false">
+              <label class="form-check-label small" for="a11y-large-text">Texto maior</label>
+            </div>
+          </div>
+          <div class="a11y-actions d-flex flex-column gap-2 align-items-start mt-2">
+            <button id="a11y-reset" class="btn btn-outline-secondary btn-sm">Restaurar padrão</button>
+            <button id="logout-button" class="btn btn-secondary btn-sm d-none">Trocar Perfil</button>
+          </div>
         </div>
-        <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="a11y-large-text" aria-checked="false">
-          <label class="form-check-label small" for="a11y-large-text">Texto maior</label>
-        </div>
-  <button id="a11y-reset" class="btn btn-outline-secondary btn-sm ms-auto">Restaurar padrão</button>
-      </div>
     </div>
 
   <!-- Botão flutuante de alternância (sempre visível) -->
@@ -49,8 +54,6 @@
             </div>
           </div>
         </div>
-        <!-- O botão "Trocar Perfil" é escondido por padrão e só aparece após a seleção de um perfil -->
-        <button id="logout-button" class="btn btn-secondary d-none">Trocar Perfil</button>
       </div>
     </header>
 
