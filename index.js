@@ -885,6 +885,8 @@ function init() {
     const statsRefresh = document.getElementById('stats-refresh');
     const statsChartEl = document.getElementById('stats-chart');
     const statsWeatherEl = document.getElementById('stats-weather');
+    let statsReady = false;
+    let statsUpdateQueue = Promise.resolve();
     let statsChart = null;
 
     // Garante que a data padrão esteja ajustada
@@ -904,6 +906,7 @@ function init() {
         if (typeof Chart === 'undefined') {
             await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
         }
+        statsReady = true;
         await renderStats();
     }
 
@@ -1311,8 +1314,18 @@ function init() {
                 rainPercent = dbStats.map(r => (r.rainProbability == null ? null : Math.round(Number(r.rainProbability))));
             }
         } else {
-            // Sem estatísticas no banco; mostra gráfico vazio para indicar falta de dados
-            labels = []; counts = []; revenue = []; rainPercent = null;
+            const sourceAppointmentsList = (adminToken && serverAppointments) ? serverAppointments : (publicAppointments || appointments || []);
+            if (Array.isArray(sourceAppointmentsList) && sourceAppointmentsList.length > 0) {
+                const aggregated = aggregateAppointments(range, refDate, sourceAppointmentsList);
+                labels = aggregated.labels;
+                counts = aggregated.counts;
+                revenue = aggregated.revenue;
+            } else {
+                labels = [];
+                counts = [];
+                revenue = [];
+            }
+            rainPercent = null;
         }
 
     // Destrói gráfico anterior se existir
@@ -1520,14 +1533,37 @@ function init() {
     // (debugResolveCep removed) — production build: no debug button wired
 
     // Liga os eventos de atualização
-        if (statsRefresh) statsRefresh.addEventListener('click', async () => {
-            // Salva o CEP quando o usuário atualiza as estatísticas
+        const queueStatsRender = () => {
+            statsUpdateQueue = statsUpdateQueue.then(async () => {
+                try {
+                    if (!statsReady) {
+                        await initializeStats();
+                    } else {
+                        await renderStats();
+                    }
+                } catch (err) {
+                    console.error('Erro ao atualizar estatísticas:', err);
+                }
+            });
+        };
+
+        if (statsRefresh) statsRefresh.addEventListener('click', () => {
             try { const cepEl = document.getElementById('stats-cep'); if (cepEl && cepEl.value) localStorage.setItem(STATS_LAST_CEP_KEY, cepEl.value); } catch (e) {}
-            await renderStats();
+            queueStatsRender();
         });
-    // Guarda o último CEP ao alterar o campo
+        if (statsRange) statsRange.addEventListener('change', () => {
+            try { const cepEl = document.getElementById('stats-cep'); if (cepEl && cepEl.value) localStorage.setItem(STATS_LAST_CEP_KEY, cepEl.value); } catch (e) {}
+            queueStatsRender();
+        });
+        if (statsDate) statsDate.addEventListener('change', () => {
+            queueStatsRender();
+        });
+    // Guarda o último CEP ao alterar o campo e atualiza gráficos automaticamente
         const cepInputEl = document.getElementById('stats-cep');
-        if (cepInputEl) cepInputEl.addEventListener('change', () => { try { localStorage.setItem(STATS_LAST_CEP_KEY, cepInputEl.value); } catch (e) {} });
+        if (cepInputEl) cepInputEl.addEventListener('change', () => {
+            try { localStorage.setItem(STATS_LAST_CEP_KEY, cepInputEl.value); } catch (e) {}
+            queueStatsRender();
+        });
     // Exportação em CSV
         const statsExportBtn = document.getElementById('stats-export');
         if (statsExportBtn) statsExportBtn.addEventListener('click', () => {
