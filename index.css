@@ -133,6 +133,16 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   gap: 4px;
   min-height: var(--weather-row-height);
 }
+.weather-date-entry.is-selected-date {
+  background: #064e3b;
+  border-color: rgba(16, 185, 129, 0.75);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35);
+}
+.weather-date-entry.is-selected-date .date-label,
+.weather-date-entry.is-selected-date .date-extra,
+.weather-date-entry.is-selected-date .date-icon-fallback {
+  color: #ecfdf5;
+}
 .weather-date-entry .date-icon {
   display: flex;
   align-items: center;

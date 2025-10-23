@@ -1019,7 +1019,8 @@ function init() {
         return dt.toLocaleDateString('pt-BR');
     };
 
-    const updateHomeWeatherDates = (days) => {
+    const updateHomeWeatherDates = (days, selectedISO = null) => {
+        const highlightISO = (selectedISO || '').toString().slice(0, 10);
         const container = document.getElementById('home-weather-dates');
         if (!container) return;
         container.innerHTML = '';
@@ -1057,6 +1058,11 @@ function init() {
             const descriptor = titleParts.filter(Boolean).join(' · ');
             entry.title = descriptor;
             entry.setAttribute('aria-label', descriptor);
+            entry.dataset.iso = iso;
+            if (highlightISO && iso === highlightISO) {
+                entry.classList.add('is-selected-date');
+                entry.setAttribute('aria-current', 'date');
+            }
             container.appendChild(entry);
         }
         if (container.childElementCount === 0) {
@@ -1428,7 +1434,7 @@ function init() {
             }
         }
     let weather = null;
-    updateHomeWeatherDates([]);
+    updateHomeWeatherDates([], refDate);
 
         const createWeatherDayIcon = (day, includeLabel = true) => {
             if (!day) return null;
@@ -1530,7 +1536,7 @@ function init() {
             console.error('Erro ao buscar weather:', err);
         }
 
-        updateHomeWeatherDates(weather);
+    updateHomeWeatherDates(weather, refDate);
 
     // Calcula e exibe a distribuição percentual das condições climáticas na visão de estatísticas
         try {
