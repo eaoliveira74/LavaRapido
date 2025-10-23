@@ -920,89 +920,6 @@ function init() {
         });
     }
 
-    // Agrega agendamentos para o intervalo selecionado a partir da data de referência
-        function aggregateAppointments(range, referenceDateStr, sourceAppointments) {
-            const ref = new Date(referenceDateStr + 'T00:00:00');
-        const map = new Map();
-        const revenueMap = new Map();
-        const labels = [];
-
-    // Função auxiliar para criar labels e inicializar mapas
-        const pushLabel = (label) => { labels.push(label); map.set(label, 0); revenueMap.set(label, 0); };
-
-            if (range === 'day') {
-            const dayLabel = ref.toLocaleDateString('pt-BR');
-            pushLabel(dayLabel);
-                (sourceAppointments || []).forEach(a => {
-                    if (a.data === referenceDateStr && a.status !== 'Cancelado') {
-                        map.set(dayLabel, map.get(dayLabel) + 1);
-                        const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                        revenueMap.set(dayLabel, revenueMap.get(dayLabel) + price);
-                    }
-                });
-        } else if (range === 'week') {
-            // Calcula o início da semana (segunda-feira) e monta os 7 rótulos
-            const start = new Date(ref);
-            const day = start.getDay();
-            const diff = (day + 6) % 7; // faz a segunda-feira ser o dia 0
-            start.setDate(start.getDate() - diff);
-            for (let i = 0; i < 7; i++) {
-                const d = new Date(start);
-                d.setDate(start.getDate() + i);
-                const label = d.toLocaleDateString('pt-BR');
-                pushLabel(label);
-            }
-                    (sourceAppointments || []).forEach(a => {
-                        if (a.status === 'Cancelado') return;
-                        const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
-                        if (idx >= 0) {
-                            const l = labels[idx];
-                            map.set(l, map.get(l) + 1);
-                            const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                            revenueMap.set(l, revenueMap.get(l) + price);
-                        }
-                    });
-        } else if (range === 'month') {
-            const year = ref.getFullYear();
-            const month = ref.getMonth();
-            const days = new Date(year, month + 1, 0).getDate();
-            for (let d = 1; d <= days; d++) {
-                const date = new Date(year, month, d);
-                const label = date.toLocaleDateString('pt-BR');
-                pushLabel(label);
-            }
-                    (sourceAppointments || []).forEach(a => {
-                        if (a.status === 'Cancelado') return;
-                        const idx = labels.indexOf(new Date(a.data + 'T00:00:00').toLocaleDateString('pt-BR'));
-                        if (idx >= 0) {
-                            const l = labels[idx];
-                            map.set(l, map.get(l) + 1);
-                            const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                            revenueMap.set(l, revenueMap.get(l) + price);
-                        }
-                    });
-        } else if (range === 'year') {
-            const year = ref.getFullYear();
-            for (let m = 0; m < 12; m++) {
-                const d = new Date(year, m, 1);
-                const label = d.toLocaleString('pt-BR', { month: 'short' });
-                pushLabel(label);
-            }
-                    (sourceAppointments || []).forEach(a => {
-                        if (a.status === 'Cancelado') return;
-                        const dt = new Date(a.data + 'T00:00:00');
-                        if (dt.getFullYear() === year) {
-                            const label = new Date(dt.getFullYear(), dt.getMonth(), 1).toLocaleString('pt-BR', { month: 'short' });
-                            map.set(label, (map.get(label) || 0) + 1);
-                            const price = (services.find(s => s.id === a.servicoId)?.preco) || 0;
-                            revenueMap.set(label, (revenueMap.get(label) || 0) + price);
-                        }
-                    });
-        }
-
-        return { labels, counts: labels.map(l => map.get(l) || 0), revenue: labels.map(l => revenueMap.get(l) || 0) };
-    }
-
     // Resolve o CEP para latitude/longitude utilizando a API ViaCEP
     async function resolveCepToLatLon(cep) {
         if (!cep) return null;
@@ -1300,26 +1217,88 @@ function init() {
         };
         ({ start, end } = computeBounds(range, refDate));
 
+        const withinBounds = (isoDate) => {
+            if (!isoDate) return false;
+            if (isoDate < start) return false;
+            if (isoDate > end) return false;
+            return true;
+        };
+
+        const sourceAppointmentsList = (adminToken && serverAppointments) ? serverAppointments : (publicAppointments || appointments || []);
+        const aggregatedByDate = (() => {
+            const map = new Map();
+            const priceByService = (id) => {
+                if (!id) return 0;
+                const svc = services.find(s => s.id === id) || null;
+                if (!svc) return 0;
+                if (typeof svc.preco === 'number' && !Number.isNaN(svc.preco)) return svc.preco;
+                const parsed = Number(svc.preco || svc.price || 0);
+                return Number.isFinite(parsed) ? parsed : 0;
+            };
+            if (!Array.isArray(sourceAppointmentsList)) return map;
+            sourceAppointmentsList.forEach(app => {
+                if (!app || app.status === 'Cancelado') return;
+                const iso = (app.data || '').toString().slice(0, 10);
+                if (!withinBounds(iso)) return;
+                // Mantém alinhado com o backend: conta apenas concluídos para métricas consolidadas
+                if (app.status && app.status !== 'Concluído') return;
+                const entry = map.get(iso) || { count: 0, revenue: 0 };
+                entry.count += 1;
+                entry.revenue += priceByService(app.servicoId);
+                map.set(iso, entry);
+            });
+            return map;
+        })();
+
+        const formatPtBr = (iso) => {
+            const dt = new Date(iso + 'T00:00:00');
+            return isNaN(dt.getTime()) ? iso : dt.toLocaleDateString('pt-BR');
+        };
+
     // Tenta estatísticas diárias vindas do banco
         const dbStats = await fetchDailyStats(start, end);
         if (Array.isArray(dbStats) && dbStats.length > 0) {
-            labels = dbStats.map(r => {
-                const dt = new Date(r.date + 'T00:00:00');
-                return isNaN(dt.getTime()) ? r.date : dt.toLocaleDateString('pt-BR');
+            const merged = new Map();
+            dbStats.forEach(r => {
+                const iso = (r.date || '').toString().slice(0, 10);
+                if (!withinBounds(iso)) return;
+                merged.set(iso, {
+                    label: formatPtBr(iso),
+                    count: Number(r.carsWashed || 0),
+                    revenue: Number(r.totalRevenue || 0),
+                    rain: (r.rainProbability == null) ? null : Math.round(Number(r.rainProbability))
+                });
             });
-            counts = dbStats.map(r => r.carsWashed || 0);
-            revenue = dbStats.map(r => r.totalRevenue || 0);
-            // Probabilidade de chuva por dia (0-100)
-            if (dbStats.some(r => r.rainProbability != null)) {
-                rainPercent = dbStats.map(r => (r.rainProbability == null ? null : Math.round(Number(r.rainProbability))));
-            }
+            aggregatedByDate.forEach((agg, iso) => {
+                const current = merged.get(iso) || { label: formatPtBr(iso), count: 0, revenue: 0, rain: null };
+                if (typeof agg.count === 'number' && agg.count > current.count) current.count = agg.count;
+                if (typeof agg.revenue === 'number' && agg.revenue > current.revenue) current.revenue = Math.round(agg.revenue * 100) / 100;
+                merged.set(iso, current);
+            });
+            const sorted = Array.from(merged.entries()).sort(([a],[b]) => (a < b ? -1 : a > b ? 1 : 0));
+            const rainValues = [];
+            let hasRain = false;
+            labels = [];
+            counts = [];
+            revenue = [];
+            sorted.forEach(([, data]) => {
+                labels.push(data.label);
+                counts.push(data.count);
+                revenue.push(data.revenue);
+                if (data.rain != null) { rainValues.push(data.rain); hasRain = true; } else { rainValues.push(null); }
+            });
+            rainPercent = hasRain ? rainValues : null;
         } else {
-            const sourceAppointmentsList = (adminToken && serverAppointments) ? serverAppointments : (publicAppointments || appointments || []);
-            if (Array.isArray(sourceAppointmentsList) && sourceAppointmentsList.length > 0) {
-                const aggregated = aggregateAppointments(range, refDate, sourceAppointmentsList);
-                labels = aggregated.labels;
-                counts = aggregated.counts;
-                revenue = aggregated.revenue;
+            if (aggregatedByDate.size > 0) {
+                const sorted = Array.from(aggregatedByDate.entries()).sort(([a],[b]) => (a < b ? -1 : a > b ? 1 : 0));
+                labels = [];
+                counts = [];
+                revenue = [];
+                sorted.forEach(([iso, data]) => {
+                    labels.push(formatPtBr(iso));
+                    counts.push(data.count);
+                    revenue.push(Math.round(data.revenue * 100) / 100);
+                });
             } else {
                 labels = [];
                 counts = [];
