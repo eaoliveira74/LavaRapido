@@ -1472,7 +1472,7 @@ function init() {
             const vc = await fetchVisualWeather(lat, lon, start, end);
             if (vc && vc.days) {
                 // Visual Crossing: renderiza faixas com ícones e rótulos localizados
-                const legendEl = document.getElementById('stats-weather-legend');
+                const legendEl = document.getElementById('home-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
                 if (legendEl) legendEl.innerHTML = '';
                 populateWeatherStrip(vc.days);
@@ -1497,7 +1497,7 @@ function init() {
             } else {
                 // Alternativa com Open-Meteo mantendo o mesmo formato de visualização
                 const days = await fetchWeatherSummary(start, end, lat, lon);
-                const legendEl = document.getElementById('stats-weather-legend');
+                const legendEl = document.getElementById('home-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
                 if (legendEl) legendEl.innerHTML = '';
 

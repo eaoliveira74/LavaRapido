@@ -67,9 +67,21 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #stats-weather-strip .day-icon .label { font-size:0.7rem; color:#cbd5e1; margin-top:2px; text-align:center; }
 #stats-weather-strip.two-row-grid { display:grid !important; grid-auto-flow:column; grid-template-rows:repeat(2, auto); align-items:flex-start !important; justify-content:flex-start; column-gap:0.75rem; row-gap:0.5rem; }
 #stats-weather-strip.two-row-grid .day-icon { width:56px; }
-#stats-weather-legend span { margin-right:12px; display:inline-flex; align-items:center; gap:6px; }
-/* Esconde o container da legenda quando estiver vazio */
-#stats-weather-legend:empty { display: none; }
+
+.weather-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.weather-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.weather-legend:empty {
+  display: none;
+}
 
 /* Cards de clima na home */
 #home-weather-layout { align-items: stretch; }
