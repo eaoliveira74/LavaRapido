@@ -43,9 +43,11 @@
               <div id="weather-card-today" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
               <div id="weather-card-tomorrow" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
             </div>
-            <div id="home-weather-dates" class="weather-dates-grid" aria-live="polite"></div>
+            <div class="weather-dates-wrapper">
+              <div id="home-weather-dates" class="weather-dates-grid" aria-live="polite"></div>
+              <div id="home-weather-legend" class="weather-legend small text-secondary" aria-live="polite"></div>
+            </div>
           </div>
-          <div id="home-weather-legend" class="weather-legend small text-secondary mt-2" aria-live="polite"></div>
         </div>
         <!-- O botão "Trocar Perfil" é escondido por padrão e só aparece após a seleção de um perfil -->
         <button id="logout-button" class="btn btn-secondary d-none">Trocar Perfil</button>
