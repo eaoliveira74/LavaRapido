@@ -184,6 +184,72 @@ function init() {
         return serverMsg;
     };
 
+        /**
+         * Envia o agendamento ao backend. Quando houver comprovante, utiliza XMLHttpRequest
+         * para acompanhar o progresso do upload e atualizar a interface com a porcentagem.
+         */
+        const sendAppointmentRequest = (url, formData, hasFile, onProgress) => {
+            if (!hasFile) {
+                return fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+            }
+
+            return new Promise((resolve, reject) => {
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', url);
+
+                    xhr.onload = () => {
+                        if (typeof onProgress === 'function') onProgress(100);
+                        const responseText = xhr.responseText || '';
+                        let parsedCache;
+                        let parsedReady = false;
+                        resolve({
+                            ok: xhr.status >= 200 && xhr.status < 300,
+                            status: xhr.status,
+                            async json() {
+                                if (parsedReady) return parsedCache;
+                                if (!responseText) {
+                                    parsedCache = {};
+                                    parsedReady = true;
+                                    return parsedCache;
+                                }
+                                try {
+                                    parsedCache = JSON.parse(responseText);
+                                    parsedReady = true;
+                                    return parsedCache;
+                                } catch (e) {
+                                    throw new Error('Resposta inválida do servidor.');
+                                }
+                            },
+                            async text() {
+                                return responseText;
+                            }
+                        });
+                    };
+
+                    xhr.onerror = () => reject(new Error('Falha de rede ao enviar comprovante.'));
+
+                    if (xhr.upload && typeof onProgress === 'function') {
+                        xhr.upload.addEventListener('progress', (evt) => {
+                            if (!evt.lengthComputable) {
+                                onProgress(null);
+                                return;
+                            }
+                            const percent = Math.round((evt.loaded / evt.total) * 100);
+                            onProgress(percent);
+                        });
+                    }
+
+                    xhr.send(formData);
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        };
+
   /**
    * Retorna a data de hoje no formato YYYY-MM-DD.
    */
@@ -528,13 +594,24 @@ function init() {
     if (file) form.append('comprovante', file, file.name);
 
     const backendUrl = getBackendBase() + '/api/appointments';
+        const compStatusEl = document.getElementById('comprovante-status');
+        const hasFile = Boolean(file);
 
-        fetch(backendUrl, {
-            method: 'POST',
-            body: form
-        }).then(async res => {
+        if (hasFile && compStatusEl) {
+            compStatusEl.textContent = 'Upload do comprovante: 0%';
+        }
+
+        try {
+            const res = await sendAppointmentRequest(backendUrl, form, hasFile, (percent) => {
+                if (!compStatusEl) return;
+                if (typeof percent === 'number') {
+                    compStatusEl.textContent = `Upload do comprovante: ${percent}%`;
+                } else {
+                    compStatusEl.textContent = 'Enviando comprovante...';
+                }
+            });
+
             if (!res.ok) {
-                // Prefere resposta JSON { error: 'msg' }, mas aceita texto simples como alternativa
                 let serverMessage = `Erro ao enviar (HTTP ${res.status})`;
                 try {
                     const data = await res.json();
@@ -546,55 +623,63 @@ function init() {
                         if (txt) serverMessage = txt;
                     } catch (e2) { /* noop */ }
                 }
-                // Exibe para o usuário a mensagem trazida pelo servidor
-                showAnnouncement(serverMessage, 'danger');
 
-                // Não recorre ao localStorage em erros do cliente (4xx), como arquivo inválido ou muito grande.
+                showAnnouncement(serverMessage, 'danger');
+                if (compStatusEl) compStatusEl.textContent = '';
+
                 if (res.status >= 400 && res.status < 500) {
-                    // Mantém o formulário como está para o usuário corrigir o arquivo/campos.
-                    return null;
+                    return;
                 }
 
-                // Em erros do servidor (5xx) considera temporário e avisa o usuário.
                 throw new Error(serverMessage);
             }
-            return res.json();
-    }).then(async created => {
-            if (!created) return; // já tratado anteriormente (erro do cliente)
-            // O servidor retorna metadados do agendamento criado (id, comprovantePath, status...)
-            // Se houver comprovantePath no retorno, usamos ele; caso contrário mantemos o data URL
+
+            let created;
+            try {
+                created = await res.json();
+            } catch (_) {
+                const txt = await res.text().catch(() => '');
+                created = txt ? { mensagem: txt } : {};
+            }
+
             if (created.comprovantePath) created.comprovantePath = created.comprovantePath.replace(/\\/g, '/');
-            // Refresh public appointments from server so availability reflects server state
+
             await fetchPublicAppointments();
-            showAnnouncement(`Agendamento para ${created.nomeCliente} realizado com sucesso (enviado ao servidor).`);
+            showAnnouncement(`Agendamento para ${created.nomeCliente || baseData.nomeCliente} realizado com sucesso (enviado ao servidor).`);
             appointmentForm.reset();
             comprovanteInput.value = '';
-            // Limpa a interface de status do comprovante
-            const compStatusEl = document.getElementById('comprovante-status');
-            if (compStatusEl) compStatusEl.textContent = '';
+
+            if (compStatusEl) {
+                if (hasFile) {
+                    compStatusEl.textContent = 'Upload do comprovante concluído.';
+                    setTimeout(() => {
+                        if (compStatusEl.textContent === 'Upload do comprovante concluído.') compStatusEl.textContent = '';
+                    }, 2500);
+                } else {
+                    compStatusEl.textContent = '';
+                }
+            }
+
             completionTimeAlert.classList.add('d-none');
             updateAvailableTimes();
             renderAppointmentsTable();
-        }).catch(async err => {
-            // Em erro de rede/servidor, usa alternativa local (modo offline) para não travar o usuário
+        } catch (err) {
             console.warn('Falha ao enviar para o servidor, usando alternativa local:', err);
             try {
                 const localA = { ...baseData };
-                // Se quiser preservar um rastro do arquivo, poderíamos ler como DataURL (cuidado com tamanho)
-                // Nessa alternativa local, não armazenamos o arquivo para evitar exceder memória/localStorage.
                 appointments.push(localA);
                 showAnnouncement('Sem conexão com o servidor: agendamento salvo localmente (offline).', 'warning');
                 appointmentForm.reset();
                 if (comprovanteInput) comprovanteInput.value = '';
-                const compStatusEl = document.getElementById('comprovante-status');
-                if (compStatusEl) compStatusEl.textContent = '';
+                if (compStatusEl) compStatusEl.textContent = hasFile ? 'Comprovante não foi enviado (modo offline).' : '';
                 completionTimeAlert.classList.add('d-none');
                 updateAvailableTimes();
                 renderAppointmentsTable();
             } catch (e) {
                 showAnnouncement(`Erro ao conectar ao servidor: ${err.message || 'Tente novamente mais tarde.'}`, 'danger');
+                if (compStatusEl && hasFile) compStatusEl.textContent = 'Falha no upload do comprovante.';
             }
-        });
+        }
   });
 
     // Exibe nome e status básico do arquivo escolhido ao lado do input
