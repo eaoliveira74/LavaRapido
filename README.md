@@ -2,117 +2,110 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Executar e implantar o aplicativo do AI Studio
 
-This contains everything you need to run your app locally.
+Este repositório contém tudo o que você precisa para executar o app localmente.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1xajWY87OcGPIQSTd9pH5jKvc_rIP4N8o
+Versão publicada no AI Studio: https://ai.studio/apps/drive/1xajWY87OcGPIQSTd9pH5jKvc_rIP4N8o
 
-## Run Locally
+## Como executar localmente
 
-**Prerequisites:**  Node.js
+**Pré-requisito:** Node.js instalado.
 
-
-1. Install dependencies:
+1. Instale as dependências:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Defina a variável `GEMINI_API_KEY` em [.env.local](.env.local) com a sua chave da Gemini API.
+3. Execute o app:
    `npm run dev`
 
-## Deployment
+## Implantação
 
-This project includes helpers to publish the frontend to GitHub Pages and the backend as a container image to GitHub Container Registry (GHCR). There is also a `docker-compose.yml` to run the app locally using Docker.
+O repositório inclui automações para publicar o frontend no GitHub Pages e o backend como imagem no GitHub Container Registry (GHCR). Também existe um `docker-compose.yml` para rodar tudo via Docker.
 
 1) Frontend (GitHub Pages)
-   - The workflow `.github/workflows/frontend-deploy.yml` builds the Vite app and publishes `dist/` to GitHub Pages on push to `main`.
-   - Enable GitHub Pages in repository Settings -> Pages and point to the `gh-pages` branch (actions will create it).
+   - O workflow `.github/workflows/frontend-deploy.yml` gera o build Vite e publica `dist/` no GitHub Pages sempre que houver push na `main`.
+   - Ative o GitHub Pages em Settings → Pages apontando para a branch `gh-pages` (criadas automaticamente pelo Actions).
 
 2) Backend (GHCR)
-   - The workflow `.github/workflows/backend-publish.yml` builds the Docker image from `server/Dockerfile` and pushes to GHCR as `ghcr.io/<owner>/lava-rapido-server:latest` when a push to `main` occurs.
-   - Create a Personal Access Token (PAT) with `write:packages` and `read:packages` and add it to the repository secrets as `GHCR_TOKEN`.
+   - O workflow `.github/workflows/backend-publish.yml` monta a imagem Docker a partir de `server/Dockerfile` e envia para `ghcr.io/<owner>/lava-rapido-server:latest` quando houver push na `main`.
+   - Crie um Personal Access Token (PAT) com permissões `write:packages` e `read:packages` e cadastre como secret `GHCR_TOKEN`.
 
-3) Local Docker Compose
-   - Run the app locally with Docker Compose:
+3) Docker Compose local
+   - Para subir tudo com Docker Compose execute:
 
 ```bash
 docker compose up --build
 ```
 
-   - The backend will be available on http://localhost:4000 and the front-end Vite dev server on http://localhost:5173.
+   - O backend responderá em http://localhost:4000 e o servidor de desenvolvimento Vite em http://localhost:5173.
 
-Secrets required for CI/CD
-- `GHCR_TOKEN` — PAT for pushing images to GitHub Container Registry.
+Secrets necessários para CI/CD
+- `GHCR_TOKEN` — PAT usado para enviar imagens ao GitHub Container Registry.
 
-Notes and recommendations
-- For production consider using a proper file storage (S3) and a database instead of local JSON files.
-- Secure `ADMIN_PASSWORD_HASH` and `JWT_SECRET` via repository secrets or environment variables in your deployment platform.
+Notas e recomendações
+- Em produção utilize um armazenamento de arquivos dedicado (ex.: S3) e um banco de dados em vez de JSON local.
+- Proteja `ADMIN_PASSWORD_HASH` e `JWT_SECRET` por meio de secrets do repositório ou variáveis de ambiente na plataforma de implantação.
 
-Cloudflare-only backend option
-- Este repositório possui um backend alternativo baseado em Cloudflare Workers (D1 + R2) em `cloudflare/`.
-- Após publicar o Worker, defina o secret do repositório:
+Opção de backend apenas com Cloudflare
+- Este repositório inclui um backend alternativo baseado em Cloudflare Workers (D1 + R2) em `cloudflare/`.
+- Após publicar o Worker, configure o secret do repositório:
    - `BACKEND_URL` = URL do Worker (ex.: https://lava-rapido-proxy.<sua-conta>.workers.dev)
-- Opcional: adicione `VISUALCROSSING_API_KEY` como secret do Worker para previsão do tempo aprimorada.
+- Opcional: adicione `VISUALCROSSING_API_KEY` como secret no Worker para previsões mais completas.
 
-GitHub deployment checklist (step-by-step)
-1. Add repository secrets (Settings → Secrets and variables → Actions):
-   - `GHCR_TOKEN` — a Personal Access Token (classic) with `write:packages` and `read:packages` to allow the backend image to be pushed to GitHub Container Registry (GHCR).
-   - `ADMIN_PASSWORD_HASH` — optional: bcrypt hash of the desired admin password. If omitted the server uses a default development password.
-   - `JWT_SECRET` — a long random secret used to sign admin JWTs. Recommended: 32+ random characters.
+Checklist de implantação no GitHub (passo a passo)
+1. Adicione os secrets do repositório (Settings → Secrets and variables → Actions):
+   - `GHCR_TOKEN` — Personal Access Token com `write:packages` e `read:packages` para publicar a imagem no GHCR.
+   - `ADMIN_PASSWORD_HASH` — opcional: hash bcrypt da senha de administrador. Sem ele o backend usa uma senha padrão.
+   - `JWT_SECRET` — segredo aleatório para assinar os tokens administradores (recomendado: 32+ caracteres).
 
-2. How to generate the values locally (example commands):
+2. Como gerar os valores localmente (exemplos):
 
-   # Generate a bcrypt hash for password 'minhaSenhaSegura' using Node
+   # Gerar hash bcrypt para a senha 'minhaSenhaSegura'
    node -e "console.log(require('bcryptjs').hashSync('minhaSenhaSegura', 8))"
 
-   # Generate a random JWT secret (Node)
+   # Gerar segredo aleatório para JWT
    node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 
-   Copy the output strings and paste them into the repository secret values.
+   Copie as strings geradas e cole nos valores dos secrets.
 
-3. Enable GitHub Pages for the repository:
-   - Go to Settings → Pages and set the source to the `gh-pages` branch (the frontend deploy Action creates/pushes this branch).
+3. Ative o GitHub Pages:
+   - Acesse Settings → Pages e defina a origem como a branch `gh-pages` (gerada pelo workflow do frontend).
 
-4. After pushing to `main` the Actions will run:
-   - Frontend Action builds the Vite app and deploys `dist/` to GitHub Pages.
-   - Backend Action builds and pushes a Docker image to GHCR (`ghcr.io/<owner>/lava-rapido-server:latest`).
+4. Após o push na `main`, os workflows executam:
+   - Frontend: build Vite e publicação da pasta `dist/` no GitHub Pages.
+   - Backend: build da imagem Docker e push para GHCR (`ghcr.io/<owner>/lava-rapido-server:latest`).
 
-5. Running the stacks (locally)
-   - Using Docker Compose (local):
+5. Executando localmente
+   - Via Docker Compose:
 
 ```bash
 docker compose up --build
 ```
 
-   - Backend will be available at http://localhost:4000 and the frontend dev server at http://localhost:5173 (or the port Vite chooses).
+   - Backend em http://localhost:4000 e frontend dev em http://localhost:5173 (ou a porta escolhida pelo Vite).
 
-Notes and security
-- Keep `ADMIN_PASSWORD_HASH` and `JWT_SECRET` secret in production. Do not commit them to the repo.
-- In production, serve uploaded files from object storage (S3 or equivalent) and use a real database instead of a JSON file.
+Notas de segurança
+- Mantenha `ADMIN_PASSWORD_HASH` e `JWT_SECRET` em segredo em produção. Não os versione.
+- Em produção sirva os arquivos enviados a partir de um object storage (ex.: S3) e utilize um banco de dados verdadeiro em vez de JSON.
 
-CEP and weather settings (admin statistics)
-----------------------------------------
-The admin "Estatísticas" view accepts a CEP (Código de Endereçamento Postal) which the app will
-use to look up coordinates and fetch simple daily weather summaries from Open-Meteo.
+Configuração de CEP e clima (estatísticas do admin)
+--------------------------------------------------
+A aba "Estatísticas" aceita um CEP (Código de Endereçamento Postal) para buscar coordenadas e consumir os resumos diários de clima do Open-Meteo.
 
-- When you enter a CEP in the admin stats panel, the application will try to resolve it via ViaCEP
-   and then geocode the resulting locality (Open-Meteo geocoding, with Nominatim as a fallback).
-- The last CEP you entered is persisted in your browser's `localStorage` under the key
-   `statsLastCep_v1` so the field remains prefilled on future visits.
-- Resolved CEP coordinates are cached in `localStorage` under the key `cepCache_v1` to reduce
-   repeated external lookups.
-- If the CEP cannot be resolved to coordinates, the UI will show a small warning and the app will
-   fall back to default coordinates (São Paulo) for the weather lookup.
+- Ao informar um CEP no painel, o app tenta resolvê-lo via ViaCEP e, em seguida, faz o geocoding da localidade (Open-Meteo, com alternativa Nominatim).
+- O último CEP utilizado fica salvo no `localStorage` do navegador (`statsLastCep_v1`) para preencher o campo automaticamente em visitas futuras.
+- As coordenadas resolvidas ficam em cache no `localStorage` (`cepCache_v1`) evitando requisições repetidas.
+- Se o CEP não puder ser convertido em coordenadas, a interface mostra um aviso e usa as coordenadas padrão (São Paulo).
 
-Clearing cached CEPs / last CEP
---------------------------------
-- To clear the stored last CEP and any cached CEP coordinates, open the browser devtools → Application → Local Storage
-   and remove the keys `statsLastCep_v1` and `cepCache_v1` for this site. Alternatively you can clear all site data.
+Limpando CEPs armazenados / último CEP
+--------------------------------------
+- Para limpar o último CEP salvo e o cache de coordenadas, abra as DevTools do navegador → Application → Local Storage
+   e exclua as chaves `statsLastCep_v1` e `cepCache_v1`. Como alternativa, limpe todos os dados do site.
 
-Privacy note
-------------
-- CEP resolution uses third-party services (ViaCEP, Open-Meteo geocoding, Nominatim). No CEPs are sent to the project's
-   backend in this flow; they are used client-side in the browser. If you require different behavior, we can change the
-   implementation to resolve CEPs on the server instead.
+Nota de privacidade
+-------------------
+- A resolução de CEP usa serviços de terceiros (ViaCEP, geocoding do Open-Meteo, Nominatim). Nenhum CEP é enviado ao backend;
+   tudo acontece no navegador. Se precisar de outra abordagem, podemos mover essa lógica para o servidor.
 
 APIs externas
 -------------
@@ -136,9 +129,9 @@ previsão do tempo. Abaixo está um inventário das integrações externas, onde
       rótulos/ícones simples.
    - Recomendações: limitar o intervalo de datas e tratar casos sem dados (o app já exibe mensagem quando não há previsão).
 
-- Nominatim (OpenStreetMap) — fallback de geocoding
+- Nominatim (OpenStreetMap) — alternativa de geocoding
    - Endpoint: `https://nominatim.openstreetmap.org/search.php?q={q}&format=jsonv2&limit=1`
-   - Uso: fallback quando Open‑Meteo não encontra correspondência. Chamado com um User‑Agent informativo.
+   - Uso: alternativa quando Open‑Meteo não encontra correspondência. Chamado com um User‑Agent informativo.
    - Observações: política de uso exige respeito (não sobrecarregar); para produção considere um provedor pago ou instância
       própria de Nominatim.
 
@@ -160,4 +153,4 @@ Boas práticas recomendadas
 
 Se desejar, posso também:
 - mover a resolução CEP + chamadas de tempo para o backend (implementar endpoints e cache); ou
-- adicionar uma breve seção de políticas de uso no README (como limites e quando acionar o fallback para SÃO PAULO).
+- adicionar uma breve seção de políticas de uso no README (como limites e quando acionar a alternativa para SÃO PAULO).

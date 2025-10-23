@@ -1,6 +1,6 @@
 // O objeto 'bootstrap' está disponível globalmente pois foi carregado via CDN no index.html.
 
-// Wrap initialization in a named function so it runs whether DOMContentLoaded already fired
+// Encapsula a inicialização em uma função nomeada para executar mesmo se o DOMContentLoaded já tiver ocorrido
 function init() {
 
   // --- 1. ESTADO DA APLICAÇÃO ---
@@ -13,13 +13,13 @@ function init() {
     { id: 'enceramento', nome: 'Enceramento', preco: 40.00, duration: 90 },
     { id: 'lavagem-motor', nome: 'Lavagem do Motor', preco: 30.00, duration: 45 }
   ];
-    // Appointments are authoritative on the server. Do not load or persist them in localStorage.
+    // Os agendamentos ficam como fonte de verdade no servidor; não carregue nem persista no localStorage.
     let appointments = [];
-    // default available times are generated every 30 minutes between 08:00 and 17:00
+    // Horários padrão gerados a cada 30 minutos entre 08:00 e 17:00
     const AVAILABLE_TIMES = [];
     const genTimes = () => {
-        const start = 8 * 60; // in minutes
-        const end = 17 * 60; // inclusive end hour
+    const start = 8 * 60; // em minutos
+    const end = 17 * 60; // hora final inclusiva
         for (let m = start; m <= end; m += 30) {
             const hh = Math.floor(m / 60).toString().padStart(2, '0');
             const mm = (m % 60).toString().padStart(2, '0');
@@ -29,7 +29,7 @@ function init() {
     genTimes();
   // Variável para guardar o agendamento a ser notificado
   let currentNotificationAppointment = null;
-    // Admin auth token (JWT) for protected API calls
+    // Token de autenticação do administrador (JWT) usado em chamadas protegidas da API
     let adminToken = localStorage.getItem('adminToken') || null;
     const setAdminToken = (t) => {
         adminToken = t;
@@ -69,13 +69,13 @@ function init() {
   const whatsAppClientName = document.getElementById('whatsapp-client-name');
   const whatsAppMessageTextarea = document.getElementById('whatsapp-message');
   const sendWhatsAppBtn = document.getElementById('send-whatsapp-btn');
-  // WhatsApp modal extras
+    // Extras do modal do WhatsApp
   const whatsAppTemplateSel = document.getElementById('whatsapp-template');
   const whatsAppIncludePrice = document.getElementById('whatsapp-include-price');
   const whatsAppIncludeReview = document.getElementById('whatsapp-include-review');
   const whatsAppIncludeLocation = document.getElementById('whatsapp-include-location');
 
-  // Optional env-configurable URLs
+    // URLs opcionais configuráveis via variáveis de ambiente
   const getReviewUrl = () => {
       try {
           if (typeof window !== 'undefined' && window.__REVIEW_URL__) return window.__REVIEW_URL__;
@@ -95,7 +95,7 @@ function init() {
       return '';
   };
 
-  // Build WhatsApp message from controls
+    // Monta a mensagem do WhatsApp com base nas opções escolhidas
   function buildWhatsappMessage(app) {
       if (!app) return '';
       const serviceName = services.find(s => s.id === app.servicoId)?.nome || 'lavagem';
@@ -108,17 +108,17 @@ function init() {
       } else { // conclusao
           parts.push(`Olá ${app.nomeCliente}, informamos que a ${serviceName} do seu veículo foi CONCLUÍDA em ${dateStr} às ${hour}.`);
       }
-      // Include price
+    // Incluir preço
       if (whatsAppIncludePrice && whatsAppIncludePrice.checked) {
           const price = services.find(s => s.id === app.servicoId)?.preco;
           if (typeof price === 'number') parts.push(`Valor: R$ ${price.toFixed(2)}.`);
       }
-      // Include review link
+    // Incluir link de avaliação
       if (whatsAppIncludeReview && whatsAppIncludeReview.checked) {
           const link = getReviewUrl();
           if (link) parts.push(`Avalie nosso atendimento: ${link}`);
       }
-      // Include location
+    // Incluir localização
       if (whatsAppIncludeLocation && whatsAppIncludeLocation.checked) {
           const link = getLocationUrl();
           if (link) parts.push(`Nossa localização: ${link}`);
@@ -167,14 +167,14 @@ function init() {
         } catch (_) {}
         try {
             if (typeof window !== 'undefined' && /\.github\.io$/.test(window.location.hostname)) {
-                // Default to Cloudflare Worker in GitHub Pages if not provided by env
+                // Padrão para o Worker do Cloudflare quando estiver no GitHub Pages sem URL configurada
                 return 'https://lava-rapido-proxy.e-a-oliveira74.workers.dev';
             }
         } catch (_) {}
         return 'http://localhost:4000';
     };
 
-    // Map server-side error messages to user-friendly text
+    // Converte mensagens de erro do servidor em textos amigáveis ao usuário
     const friendlyError = (serverMsg) => {
         if (!serverMsg) return 'Ocorreu um erro. Tente novamente.';
         const msg = serverMsg.toString().toLowerCase();
@@ -220,7 +220,7 @@ function init() {
 
   const renderClientView = () => {
         populateServiceSelect();
-        // Refresh public appointments (server) to compute availability, then update UI
+    // Atualiza os agendamentos públicos (servidor) para recalcular disponibilidade e refletir na UI
         fetchPublicAppointments().then(() => updateAvailableTimes()).catch(() => updateAvailableTimes());
     // renderClientAppointments foi removido
   };
@@ -228,7 +228,7 @@ function init() {
     // (adiado) -- carregamento inicial de agendamentos públicos será feito após a definição da função
   
   const renderAdminView = (activeTab = 'appointments') => {
-      // If we have a token, try fetching server-side appointments
+    // Se houver token ativo, tenta buscar os agendamentos diretamente do servidor
       if (adminToken) fetchAdminAppointments().catch(() => {});
       renderAppointmentsTable();
       renderServicesList();
@@ -247,14 +247,14 @@ function init() {
             if (activeTab === 'stats') initializeStats();
   };
 
-    // Fetch appointments from backend (requires adminToken)
+    // Busca agendamentos no backend (exige adminToken)
     const fetchAdminAppointments = async () => {
     const backend = getBackendBase();
         if (!adminToken) return;
         try {
             const res = await fetch(`${backend}/api/appointments`, { headers: { Authorization: `Bearer ${adminToken}` } });
             if (!res.ok) {
-                // If unauthorized, clear stale token and prompt re-login
+                // Se estiver não autorizado, limpa o token obsoleto e pede novo login
                 if (res.status === 401 || res.status === 403) {
                     setAdminToken(null);
                     serverAppointments = null;
@@ -274,7 +274,7 @@ function init() {
         }
     };
 
-    // Fetch public appointments (no auth) so admin on desktop can see server-saved appointments made from mobile
+    // Busca agendamentos públicos (sem autenticação) para o admin ver reservas feitas via mobile
     const fetchPublicAppointments = async () => {
         try {
             const backend = getBackendBase();
@@ -302,7 +302,7 @@ function init() {
   
   const updateAvailableTimes = () => {
       const selectedDate = datePicker.value;
-      // block past times when selected date is today
+    // Bloqueia horários passados quando a data escolhida é hoje
       const now = new Date();
       const tzOffset = now.getTimezoneOffset();
       const todayStr = new Date(now.getTime() - tzOffset * 60000).toISOString().slice(0,10);
@@ -310,7 +310,7 @@ function init() {
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
       const displayDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR');
       availableTimesTitle.textContent = `Horários para ${displayDate}`;
-      // Prefer server-side public appointments when available
+    // Prefere dados públicos vindos do servidor sempre que possível
       const sourceAppointments = publicAppointments ? publicAppointments : appointments;
       const bookedSlots = new Set(
           (sourceAppointments || []).filter(a => a.data === selectedDate && a.status !== 'Cancelado').map(a => a.horario)
@@ -328,7 +328,7 @@ function init() {
           slot.dataset.time = time;
           slot.innerHTML = `<div class="slot-label fw-bold">${time}</div>`;
           availableTimesGrid.appendChild(slot);
-          // also populate the select with only free slots
+          // Também mantém o select preenchido apenas com horários livres
           if (!unavailable) {
               const option = document.createElement('option');
               option.value = time;
@@ -336,17 +336,17 @@ function init() {
               timeSelect.appendChild(option);
           }
       });
-      // Make slots clickable to select time
+    // Deixa os cards de horário clicáveis para selecionar o período
       availableTimesGrid.querySelectorAll('.slot').forEach(s => s.addEventListener('click', () => {
           const t = s.dataset.time;
-          if (s.classList.contains('unavailable')) return; // ignore unavailable
+          if (s.classList.contains('unavailable')) return; // ignora horários indisponíveis
           if (timeSelect.querySelector(`option[value="${t}"]`)) {
               timeSelect.value = t;
               timeSelect.dispatchEvent(new Event('change'));
           }
       }));
 
-            // Ensure legend exists and is visible
+            // Garante que a legenda exista e esteja visível
             try {
                     const legendHTML = `
                             <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -487,7 +487,7 @@ function init() {
 
     appointmentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-        // block past time submission if selected date is today
+    // Impede envio com horário no passado quando a data escolhida é hoje
         const selectedDate = datePicker.value;
         const now = new Date();
         const tzOffset = now.getTimezoneOffset();
@@ -517,7 +517,7 @@ function init() {
             status: 'Pendente'
         };
 
-        // Always attempt to send to backend first (multipart/form-data). If the server is unavailable, fall back to localStorage.
+    // Sempre tenta enviar primeiro ao backend (multipart/form-data); se o servidor estiver indisponível, recorre ao localStorage.
         const form = new FormData();
         form.append('nomeCliente', baseData.nomeCliente);
         form.append('telefoneCliente', baseData.telefoneCliente);
@@ -534,7 +534,7 @@ function init() {
             body: form
         }).then(async res => {
             if (!res.ok) {
-                // Prefer JSON { error: 'msg' } but fall back to plain text
+                // Prefere resposta JSON { error: 'msg' }, mas aceita texto simples como alternativa
                 let serverMessage = `Erro ao enviar (HTTP ${res.status})`;
                 try {
                     const data = await res.json();
@@ -546,42 +546,42 @@ function init() {
                         if (txt) serverMessage = txt;
                     } catch (e2) { /* noop */ }
                 }
-                // Show server-provided message to the user
+                // Exibe para o usuário a mensagem trazida pelo servidor
                 showAnnouncement(serverMessage, 'danger');
 
-                // Do NOT fallback to localStorage for client errors (4xx) such as invalid file type or too large.
+                // Não recorre ao localStorage em erros do cliente (4xx), como arquivo inválido ou muito grande.
                 if (res.status >= 400 && res.status < 500) {
-                    // Keep form as-is so user can correct file/inputs.
+                    // Mantém o formulário como está para o usuário corrigir o arquivo/campos.
                     return null;
                 }
 
-                // For server errors (5xx) treat as transient and show error to user.
+                // Em erros do servidor (5xx) considera temporário e avisa o usuário.
                 throw new Error(serverMessage);
             }
             return res.json();
     }).then(async created => {
-            if (!created) return; // handled earlier (client error)
-            // Server returns the created appointment metadata (id, comprovantePath, status...)
-            // If server returned comprovantePath, normalize to use that; otherwise fallback to data URL
+            if (!created) return; // já tratado anteriormente (erro do cliente)
+            // O servidor retorna metadados do agendamento criado (id, comprovantePath, status...)
+            // Se houver comprovantePath no retorno, usamos ele; caso contrário mantemos o data URL
             if (created.comprovantePath) created.comprovantePath = created.comprovantePath.replace(/\\/g, '/');
             // Refresh public appointments from server so availability reflects server state
             await fetchPublicAppointments();
             showAnnouncement(`Agendamento para ${created.nomeCliente} realizado com sucesso (enviado ao servidor).`);
             appointmentForm.reset();
             comprovanteInput.value = '';
-            // clear comprovante status UI
+            // Limpa a interface de status do comprovante
             const compStatusEl = document.getElementById('comprovante-status');
             if (compStatusEl) compStatusEl.textContent = '';
             completionTimeAlert.classList.add('d-none');
             updateAvailableTimes();
             renderAppointmentsTable();
         }).catch(async err => {
-            // Network/server error: fallback local (modo offline) para não travar o fluxo do usuário
-            console.warn('Falha ao enviar para o servidor, aplicando fallback local:', err);
+            // Em erro de rede/servidor, usa alternativa local (modo offline) para não travar o usuário
+            console.warn('Falha ao enviar para o servidor, usando alternativa local:', err);
             try {
                 const localA = { ...baseData };
                 // Se quiser preservar um rastro do arquivo, poderíamos ler como DataURL (cuidado com tamanho)
-                // Neste fallback, não vamos armazenar arquivo para evitar exceder memória/localStorage.
+                // Nessa alternativa local, não armazenamos o arquivo para evitar exceder memória/localStorage.
                 appointments.push(localA);
                 showAnnouncement('Sem conexão com o servidor: agendamento salvo localmente (offline).', 'warning');
                 appointmentForm.reset();
@@ -597,7 +597,7 @@ function init() {
         });
   });
 
-  // show selected file name and basic status next to the file input
+    // Exibe nome e status básico do arquivo escolhido ao lado do input
   const comprovanteInputEl = document.getElementById('comprovante');
   if (comprovanteInputEl) {
       comprovanteInputEl.addEventListener('change', () => {
@@ -617,7 +617,7 @@ function init() {
       });
   }
 
-  // Set date-picker min to today to avoid selecting past dates
+    // Ajusta o date-picker para não permitir datas anteriores ao dia atual
   (function ensureMinDate() {
       if (!datePicker) return;
       try {
@@ -638,17 +638,17 @@ function init() {
       const app = list.find(a => String(a.id) === String(id));
 
     if (action === 'view-proof') {
-          // Prefer direct uploads static URL when available (convenience), then try protected endpoint, then fallback to data URL.
+          // Prefere a URL estática de uploads, depois tenta o endpoint protegido e, por fim, usa o data URL.
           const backend = getBackendBase();
           if (app && app.comprovantePath) {
-              // try opening /uploads/<path> first
+              // Primeiro tenta abrir /uploads/<path>
               try {
                   const rawUrl = `${backend.replace(/\/$/, '')}/${app.comprovantePath.replace(/^\//, '')}`;
-                  // open in new tab (may be blocked by popup blockers if not user-initiated, but this is a click handler so should be OK)
+                  // Abre em nova aba (cliques do usuário evitam bloqueadores de pop-up)
                   window.open(rawUrl, '_blank');
                   return;
               } catch (e) {
-                  // fallthrough to protected fetch
+                  // Caso falhe, continua para o fetch protegido
               }
           }
           if (adminToken && app && app.comprovantePath) {
@@ -672,13 +672,13 @@ function init() {
     } else if (action === 'notify') {
           // Guarda o agendamento atual e prepara a mensagem padrão
           currentNotificationAppointment = app;
-        // Preenche os dados no modal e define defaults
+    // Preenche os dados no modal e define valores padrão
           whatsAppClientName.textContent = app.nomeCliente;
         if (whatsAppTemplateSel) whatsAppTemplateSel.value = 'conclusao';
         if (whatsAppIncludePrice) whatsAppIncludePrice.checked = true;
         if (whatsAppIncludeReview) whatsAppIncludeReview.checked = true;
         if (whatsAppIncludeLocation) whatsAppIncludeLocation.checked = false;
-        // Render preview based on controls
+    // Renderiza a prévia com base nos controles marcados
         refreshWhatsappPreview();
           whatsAppModal.show();
 
@@ -696,7 +696,7 @@ function init() {
           }
           
       } else if (action === 'keep') {
-          // Confirmar e abrir WhatsApp com mensagem de confirmação
+          // Confirma e abre o WhatsApp com a mensagem adequada
           if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
           try {
               const backend = getBackendBase();
@@ -718,7 +718,7 @@ function init() {
               showAnnouncement('Erro ao confirmar agendamento.','danger');
           }
       } else if (action === 'pendent') {
-          // Setting to 'Pendente' requires admin privileges
+          // Alterar para 'Pendente' exige privilégios de administrador
           if (!adminToken) { showAnnouncement('Ação disponível apenas para administradores. Faça login.','warning'); return; }
           showAnnouncement('Para marcar como Pendente, use o painel do administrador.');
       } else if (action === 'delete') {
@@ -762,7 +762,7 @@ function init() {
       currentNotificationAppointment = null;
   });
 
-    // Update preview when controls change
+    // Atualiza a prévia sempre que os controles forem alterados
     if (whatsAppTemplateSel) whatsAppTemplateSel.addEventListener('change', refreshWhatsappPreview);
     if (whatsAppIncludePrice) whatsAppIncludePrice.addEventListener('change', refreshWhatsappPreview);
     if (whatsAppIncludeReview) whatsAppIncludeReview.addEventListener('change', refreshWhatsappPreview);
@@ -802,10 +802,10 @@ function init() {
     const statsWeatherEl = document.getElementById('stats-weather');
     let statsChart = null;
 
-    // Ensure default date
+    // Garante que a data padrão esteja ajustada
     if (statsDate) statsDate.value = getTodayString();
 
-    // Restore last used CEP from localStorage
+    // Restaura o último CEP utilizado do localStorage
     const STATS_LAST_CEP_KEY = 'statsLastCep_v1';
     try {
         const lastCep = localStorage.getItem(STATS_LAST_CEP_KEY);
@@ -813,9 +813,9 @@ function init() {
         if (lastCep && cepInputEl) cepInputEl.value = lastCep;
     } catch (e) { /* ignore */ }
 
-    // Initialize stats view: load Chart.js if needed and draw
+    // Inicializa a visão de estatísticas: carrega Chart.js se necessário e desenha o gráfico
     async function initializeStats() {
-        // load Chart.js from CDN if not present
+    // Carrega Chart.js da CDN caso ainda não tenha sido carregado
         if (typeof Chart === 'undefined') {
             await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
         }
@@ -832,14 +832,14 @@ function init() {
         });
     }
 
-    // Aggregate appointments for the given range and reference date
+    // Agrega agendamentos para o intervalo selecionado a partir da data de referência
         function aggregateAppointments(range, referenceDateStr, sourceAppointments) {
             const ref = new Date(referenceDateStr + 'T00:00:00');
         const map = new Map();
         const revenueMap = new Map();
         const labels = [];
 
-        // Helper to push label and init maps
+    // Função auxiliar para criar labels e inicializar mapas
         const pushLabel = (label) => { labels.push(label); map.set(label, 0); revenueMap.set(label, 0); };
 
             if (range === 'day') {
@@ -853,10 +853,10 @@ function init() {
                     }
                 });
         } else if (range === 'week') {
-            // compute week start (Monday) and labels for 7 days
+            // Calcula o início da semana (segunda-feira) e monta os 7 rótulos
             const start = new Date(ref);
             const day = start.getDay();
-            const diff = (day + 6) % 7; // make Monday = 0
+            const diff = (day + 6) % 7; // faz a segunda-feira ser o dia 0
             start.setDate(start.getDate() - diff);
             for (let i = 0; i < 7; i++) {
                 const d = new Date(start);
@@ -915,10 +915,10 @@ function init() {
         return { labels, counts: labels.map(l => map.get(l) || 0), revenue: labels.map(l => revenueMap.get(l) || 0) };
     }
 
-    // Resolve CEP (Brazil postal code) to latitude/longitude using ViaCEP
+    // Resolve o CEP para latitude/longitude utilizando a API ViaCEP
     async function resolveCepToLatLon(cep) {
         if (!cep) return null;
-        // normalize: remove non-digits
+    // Normaliza removendo tudo que não for número
         const cleaned = (cep || '').toString().replace(/\D/g, '');
         if (cleaned.length < 8) return null;
         try {
@@ -927,24 +927,24 @@ function init() {
             if (!res.ok) return null;
             const j = await res.json();
             if (j.erro) return null;
-            // ViaCEP returns logradouro, bairro, localidade and uf. Build richer candidate queries (most specific first)
+            // ViaCEP retorna logradouro, bairro, localidade e UF; monta consultas do mais específico ao mais amplo
             const candidatesSet = new Set();
             const logradouro = (j.logradouro || '').trim();
             const bairro = (j.bairro || '').trim();
             const localidade = (j.localidade || '').trim();
             const uf = (j.uf || '').trim();
-            // Full address variants
+            // Variações com endereço completo
             if (logradouro && bairro && localidade && uf) candidatesSet.add(`${logradouro} ${bairro} ${localidade} ${uf}`);
             if (logradouro && localidade && uf) candidatesSet.add(`${logradouro} ${localidade} ${uf}`);
             if (bairro && localidade && uf) candidatesSet.add(`${bairro} ${localidade} ${uf}`);
             if (logradouro && uf) candidatesSet.add(`${logradouro} ${uf}`);
             if (localidade && uf) candidatesSet.add(`${localidade} ${uf}`);
-            // Try with Brasil appended for broader geocoding
+            // Tenta adicionar "Brasil" para ampliar a geocodificação
             if (localidade && uf) candidatesSet.add(`${localidade} ${uf} Brasil`);
             if (logradouro && bairro && localidade && uf) candidatesSet.add(`${logradouro} ${bairro} ${localidade} ${uf} Brasil`);
-            // Try CEP itself
+            // Tenta com o próprio CEP
             candidatesSet.add(cleaned);
-            // Turn into array and keep order
+            // Converte para array preservando a ordem
             const candidates = Array.from(candidatesSet);
             for (const cand of candidates) {
                 const q = encodeURIComponent(cand);
@@ -958,10 +958,10 @@ function init() {
                         return { lat: r.latitude, lon: r.longitude };
                     }
                 } catch (e) {
-                    // try next candidate
+                    // Tenta o próximo candidato
                 }
             }
-            // nothing matched in Open-Meteo geocoding — try Nominatim (OpenStreetMap) as a fallback
+            // Se nada casar no Open-Meteo, tenta o Nominatim (OpenStreetMap) como alternativa
             try {
                 const nomq = encodeURIComponent(`${j.localidade || ''} ${j.uf || ''} Brasil`.trim());
                 const nomUrl = `https://nominatim.openstreetmap.org/search.php?q=${nomq}&format=jsonv2&limit=1`;
@@ -973,28 +973,28 @@ function init() {
                     }
                 }
             } catch (e) {
-                // ignore
+                // Ignora entrada inválida
             }
-            // nothing matched
+            // Nenhuma correspondência encontrada
             return null;
         } catch (e) {
             return null;
         }
     }
 
-    // Simple CEP cache helpers (localStorage)
+    // Utilitários simples de cache de CEP usando localStorage
     const CEP_CACHE_KEY = 'cepCache_v1';
     const readCepCache = () => {
         try { return JSON.parse(localStorage.getItem(CEP_CACHE_KEY) || '{}'); } catch (e) { return {}; }
     };
     const writeCepCache = (c) => { try { localStorage.setItem(CEP_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
 
-    // SVG icons used in the stats view (small, inline)
+    // Ícones SVG usados na visão de estatísticas (pequenos e inline)
     const ICON_SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="#FFC107"/><g stroke="#FFC107" stroke-width="1.4" stroke-linecap="round"><path d="M12 1.8v2.4"/><path d="M12 19.8v2.4"/><path d="M4.4 4.4l1.7 1.7"/><path d="M17.9 17.9l1.7 1.7"/><path d="M1.8 12h2.4"/><path d="M19.8 12h2.4"/><path d="M4.4 19.6l1.7-1.7"/><path d="M17.9 6.1l1.7-1.7"/></g></svg>';
     const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/></svg>';
     const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#78909C"/><g stroke="#03A9F4" stroke-linecap="round" stroke-width="1.6"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
 
-    // Fetch weather from the server-side Visual Crossing proxy
+    // Busca clima através do proxy do Visual Crossing rodando no servidor
     async function fetchVisualWeather(lat, lon, startDate, endDate) {
         try {
             const backend = getBackendBase();
@@ -1015,7 +1015,7 @@ function init() {
     const readWeatherCache = () => { try { return JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}'); } catch (e) { return {}; } };
     const writeWeatherCache = (c) => { try { localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
 
-    // Helper to fetch and cache a Visual Crossing (or fallback) timeline for a small range
+    // Auxiliar para buscar e armazenar em cache a linha do tempo do Visual Crossing (ou alternativa) para pequenos intervalos
     async function fetchTwoDayWeatherCached(lat, lon) {
         const start = getTodayString();
         const tomorrow = (() => { const d = new Date(start + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
@@ -1023,14 +1023,14 @@ function init() {
         const cache = readWeatherCache();
         const now = Date.now();
         if (cache[key] && (now - (cache[key].ts || 0) < WEATHER_CACHE_TTL)) return cache[key].data;
-        // try Visual Crossing proxy first
+    // Tenta primeiro o proxy do Visual Crossing
         let data = null;
         try {
             const vc = await fetchVisualWeather(lat, lon, start, tomorrow);
             if (vc && vc.days) data = vc;
         } catch (e) { /* ignore */ }
         if (!data) {
-            // fallback to open-meteo summary (massage into same shape with min/max/feels-like/precip)
+            // Se falhar, usa resumo do Open-Meteo e adapta o formato (min/máx/sensação/previsão de chuva)
             const om = await fetchWeatherSummary(start, tomorrow, lat, lon);
             if (om && om.length) {
                 data = {
@@ -1054,7 +1054,7 @@ function init() {
         return data;
     }
 
-    // Render two small cards in header for today and tomorrow
+    // Renderiza dois cards no topo para hoje e amanhã
     async function renderHomeTwoDayForecast(lat = -23.55, lon = -46.63) {
         try {
             const cardsContainer = document.getElementById('home-weather-cards');
@@ -1069,7 +1069,7 @@ function init() {
                 if (tomorrowEl) tomorrowEl.innerHTML = '<div class="title">Amanhã</div><div class="cond">Indisponível</div>';
                 return;
             }
-            // find today and tomorrow in returned days
+            // Procura os dias de hoje e amanhã na resposta
             const todayISO = getTodayString();
             const tomorrowISO = (() => { const d = new Date(todayISO + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
             const dayMap = {}; data.days.forEach(d => { dayMap[d.date] = d; });
@@ -1108,16 +1108,16 @@ function init() {
     }
 
 
-    // Fetch simple weather summary via Open-Meteo (no key required)
+    // Busca um resumo simples do clima via Open-Meteo (sem necessidade de chave)
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
-        // Open-Meteo daily summary for weathercode + feels_like approximation
-        // Note: Open-Meteo "apparent_temperature_max/min" approximates sensação térmica
+    // Resumo diário do Open-Meteo com weathercode e aproximação de sensação térmica
+    // Observação: apparent_temperature_max/min do Open-Meteo já aproxima a sensação térmica
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
         try {
             const res = await fetch(url);
             if (!res.ok) return null;
             const j = await res.json();
-            // map weather codes to simple labels and icons
+            // Converte códigos meteorológicos em rótulos e ícones simples
             const codeToLabelAndIcon = (c) => {
                 // 0 = clear sky, 1-3 mainly clear/partly cloudy/overcast, 51+ light-moderate precipitation
                 if (c === 0) return { label: 'Ensolarado', icon: '☀️' };
@@ -1138,7 +1138,7 @@ function init() {
         }
     }
 
-    // Fetch aggregated daily stats (prefer public endpoint; fallback to admin if logged in)
+    // Busca estatísticas diárias agregadas (prefere endpoint público; usa admin se logado)
     async function fetchDailyStats(startISO, endISO) {
         const backend = getBackendBase();
         const pubUrl = `${backend}/api/stats-daily?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`;
@@ -1159,10 +1159,10 @@ function init() {
         return [];
     }
 
-    // Upsert rain probability for specific dates (best effort, small ranges only)
+    // Salva/atualiza probabilidade de chuva para datas específicas (melhor esforço, intervalos curtos)
     async function upsertRainProbabilities(days) {
         if (!adminToken || !Array.isArray(days) || days.length === 0) return;
-        if (days.length > 62) return; // avoid spamming for large ranges
+    if (days.length > 62) return; // evita excesso de chamadas para intervalos gigantes
         const backend = getBackendBase();
         await Promise.all(days.map(async d => {
             const rp = (d.precipprob != null) ? Number(d.precipprob) : null;
@@ -1180,20 +1180,20 @@ function init() {
     async function renderStats() {
         const range = statsRange.value || 'month';
         const refDate = statsDate.value || getTodayString();
-        // dates bounds for queries and weather fetch
+    // Limites de data usados nas consultas e na busca de clima
         let start = refDate, end = refDate;
-        // Build labels from DB stats when available; fall back to client aggregation if not
+    // Usa labels vindos do banco quando disponíveis; caso contrário agrega no cliente
     let labels = [];
     let counts = [];
     let revenue = [];
-    let rainPercent = null; // null => dataset omitted; array => plotted
-        // First, determine range bounds similar to previous logic
+    let rainPercent = null; // null => dataset omitido; array => plotado
+    // Primeiro calcula os limites de data como na lógica anterior
         const computeBounds = (range, refDate) => {
             if (range === 'day') return { start: refDate, end: refDate };
             const d = new Date(refDate + 'T00:00:00');
             if (range === 'week') {
                 const day = d.getDay(); // 0-6, Sun-Sat
-                const diffToMon = (day + 6) % 7; // days since Monday
+                const diffToMon = (day + 6) % 7; // dias contados a partir da segunda-feira
                 const monday = new Date(d); monday.setDate(d.getDate() - diffToMon);
                 const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
                 return { start: monday.toISOString().slice(0,10), end: sunday.toISOString().slice(0,10) };
@@ -1212,7 +1212,7 @@ function init() {
         };
         ({ start, end } = computeBounds(range, refDate));
 
-        // Try DB-backed daily stats
+    // Tenta estatísticas diárias vindas do banco
         const dbStats = await fetchDailyStats(start, end);
         if (Array.isArray(dbStats) && dbStats.length > 0) {
             labels = dbStats.map(r => {
@@ -1221,19 +1221,19 @@ function init() {
             });
             counts = dbStats.map(r => r.carsWashed || 0);
             revenue = dbStats.map(r => r.totalRevenue || 0);
-            // rain probability per day (0-100)
+            // Probabilidade de chuva por dia (0-100)
             if (dbStats.some(r => r.rainProbability != null)) {
                 rainPercent = dbStats.map(r => (r.rainProbability == null ? null : Math.round(Number(r.rainProbability))));
             }
         } else {
-            // No DB stats available; show empty chart to reflect the source of truth
+            // Sem estatísticas no banco; mostra gráfico vazio para indicar falta de dados
             labels = []; counts = []; revenue = []; rainPercent = null;
         }
 
-        // destroy previous chart if exists
+    // Destrói gráfico anterior se existir
         if (statsChart) { statsChart.destroy(); statsChart = null; }
 
-        // prepare datasets: counts and revenue
+    // Prepara datasets de quantidade e faturamento
         const ctx = statsChartEl.getContext('2d');
             const datasets = [
                 { label: 'Veículos lavados', data: counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
@@ -1265,12 +1265,12 @@ function init() {
                 }
         });
 
-        // Weather fetch uses computed start/end bounds
-        // resolve CEP input to lat/lon if provided
-        // resolve CEP input to lat/lon if provided, using cache when possible
+    // A busca de clima usa os limites calculados anteriormente
+    // Resolve o CEP informado para lat/lon quando houver
+    // Faz o mesmo usando o cache quando possível
         const cepInput = document.getElementById('stats-cep');
         const cepFeedback = document.getElementById('stats-cep-feedback');
-        let lat = -23.55, lon = -46.63; // default São Paulo
+    let lat = -23.55, lon = -46.63; // coordenadas padrão de São Paulo
         if (cepFeedback) { cepFeedback.classList.add('d-none'); cepFeedback.textContent = ''; }
         if (cepInput && cepInput.value) {
             const cleanedCep = (cepInput.value || '').toString().replace(/\D/g, '');
@@ -1290,10 +1290,10 @@ function init() {
         }
         let weather = null;
         try {
-            // Prefer Visual Crossing proxy if available
+            // Prefere o proxy do Visual Crossing se estiver disponível
             const vc = await fetchVisualWeather(lat, lon, start, end);
             if (vc && vc.days) {
-                // Visual Crossing: render a visual strip of day icons + localized labels
+                // Visual Crossing: renderiza faixas com ícones e rótulos localizados
                 const stripEl = document.getElementById('stats-weather-strip');
                 const legendEl = document.getElementById('stats-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
@@ -1316,7 +1316,7 @@ function init() {
                     }
                 });
 
-                // populate legend
+                // Preenche a legenda
                 if (legendEl) {
                     legendEl.innerHTML = '';
                     const makeSpan = (icon, text) => {
@@ -1331,10 +1331,10 @@ function init() {
 
                 if (infoEl) infoEl.textContent = 'Previsão meteorológica (Visual Crossing).';
                 weather = vc.days;
-                // best-effort: persist rain probability into daily stats for chart usage later
+                // Melhor esforço: persiste probabilidade de chuva nas estatísticas para uso futuro
                 await upsertRainProbabilities(vc.days);
             } else {
-                // Fallback to Open-Meteo: use same strip rendering but normalize fields
+                // Alternativa com Open-Meteo mantendo o mesmo formato de visualização
                 const days = await fetchWeatherSummary(start, end, lat, lon);
                 const stripEl = document.getElementById('stats-weather-strip');
                 const legendEl = document.getElementById('stats-weather-legend');
@@ -1358,7 +1358,7 @@ function init() {
                             stripEl.appendChild(dayDiv);
                         }
                     });
-                    // legend
+                    // Legenda
                     if (legendEl) {
                         legendEl.innerHTML = '';
                         const makeSpan = (icon, text) => {
@@ -1385,7 +1385,7 @@ function init() {
             console.error('Erro ao buscar weather:', err);
         }
 
-        // Compute and display percentage breakdown for weather conditions in the stats view
+    // Calcula e exibe a distribuição percentual das condições climáticas na visão de estatísticas
         try {
             if (weather && weather.length) {
                 const totalDays = weather.length;
@@ -1397,8 +1397,8 @@ function init() {
                     else if (raw.includes('chuv') || raw.includes('rain') || raw.includes('storm') || raw.includes('showers')) counts.Chuvoso++;
                     else counts.Indeterminado++;
                 });
-                const percent = (n) => (totalDays === 0 ? 0 : Math.round((n * 1000) / totalDays) / 10); // one decimal
-                // build HTML summary
+                const percent = (n) => (totalDays === 0 ? 0 : Math.round((n * 1000) / totalDays) / 10); // uma casa decimal
+                // Monta o resumo em HTML
                 const parts = [];
                 parts.push(`<div class="me-3">${ICON_SUN} <strong>Ensolarado</strong> ${percent(counts.Ensolarado)}% (${counts.Ensolarado}/${totalDays})</div>`);
                 parts.push(`<div class="me-3">${ICON_CLOUD} <strong>Nublado</strong> ${percent(counts.Nublado)}% (${counts.Nublado}/${totalDays})</div>`);
@@ -1410,11 +1410,11 @@ function init() {
             console.warn('Failed to compute weather percentages', e);
         }
 
-        // If we have Visual Crossing data, also populate the home header with today's weather
+    // Se houver dados do Visual Crossing, preenche também o cabeçalho com o clima de hoje
         try {
             const homeEl = document.getElementById('home-weather');
             if (homeEl && weather && weather.length) {
-                // find today's date
+                // Localiza a data atual
                 const todayISO = getTodayString();
                 const today = weather.find(d => d.date === todayISO) || weather[0];
                 if (today) {
@@ -1434,16 +1434,16 @@ function init() {
 
     // (debugResolveCep removed) — production build: no debug button wired
 
-    // wire refresh
+    // Liga os eventos de atualização
         if (statsRefresh) statsRefresh.addEventListener('click', async () => {
-            // save CEP when user refreshes stats
+            // Salva o CEP quando o usuário atualiza as estatísticas
             try { const cepEl = document.getElementById('stats-cep'); if (cepEl && cepEl.value) localStorage.setItem(STATS_LAST_CEP_KEY, cepEl.value); } catch (e) {}
             await renderStats();
         });
-        // save last CEP on change
+    // Guarda o último CEP ao alterar o campo
         const cepInputEl = document.getElementById('stats-cep');
         if (cepInputEl) cepInputEl.addEventListener('change', () => { try { localStorage.setItem(STATS_LAST_CEP_KEY, cepInputEl.value); } catch (e) {} });
-        // CSV export
+    // Exportação em CSV
         const statsExportBtn = document.getElementById('stats-export');
         if (statsExportBtn) statsExportBtn.addEventListener('click', () => {
             if (!statsChart) return showAnnouncement('Gere o gráfico antes de exportar.','warning');
@@ -1530,7 +1530,7 @@ function init() {
             const adminPasswordModalEl = document.getElementById('admin-password-modal');
             const adminPasswordModal = bootstrap.Modal.getInstance(adminPasswordModalEl);
 
-            // Try backend login first
+            // Primeiro tenta autenticar no backend
             const backend = getBackendBase();
             try {
                 const res = await fetch(`${backend}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: input }) });
@@ -1544,11 +1544,11 @@ function init() {
                     }
                 }
             } catch (err) {
-                // fallback to local check below
+                // Se falhar, cai no check local abaixo
                 console.warn('Backend auth failed, falling back to local check', err);
             }
 
-            // Fallback: local hash check (for offline/demo)
+            // Alternativa: validação local do hash (uso offline/demo)
             const hashed = await sha256Hex(input);
             if (hashed === ADMIN_PASSWORD_HASH) {
                     feedback.classList.add('d-none');
@@ -1569,28 +1569,28 @@ function init() {
                 b.classList.toggle('a11y-high-contrast', !!prefs.contrast);
                 b.classList.toggle('a11y-large-text', !!prefs.largeText);
             b.classList.toggle('a11y-reduced-motion', false);
-                // toolbar collapsed state
+                // Estado de colapso da barra de ferramentas
                 const toolbar = document.getElementById('a11y-toolbar');
                 if (toolbar) toolbar.classList.toggle('collapsed', !!prefs.collapsed);
                 const toggleBtn = document.getElementById('a11y-toggle');
                 if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(!prefs.collapsed));
-                // update aria-checked attributes on inputs if present
+                // Atualiza atributos aria-checked dos inputs quando existirem
                 const ic = document.getElementById('a11y-contrast');
                 const il = document.getElementById('a11y-large-text');
             if (ic) { ic.checked = !!prefs.contrast; ic.setAttribute('aria-checked', String(!!prefs.contrast)); }
             if (il) { il.checked = !!prefs.largeText; il.setAttribute('aria-checked', String(!!prefs.largeText)); }
             };
 
-            // Initialize toolbar from saved prefs (including collapsed)
+            // Inicializa a barra usando preferências salvas (incluindo colapso)
             try {
                 const saved = readA11y();
                 applyA11y(saved);
             } catch(e) { /* ignore */ }
 
-            // Wire toggle listeners
+            // Conecta os listeners dos toggles
             const elContrast = document.getElementById('a11y-contrast');
             const elLargeText = document.getElementById('a11y-large-text');
-            // reduced-motion control removed from markup
+            // Controle de movimento reduzido removido do markup
             const elReset = document.getElementById('a11y-reset');
 
             const onChange = () => {
@@ -1601,12 +1601,12 @@ function init() {
             };
             if (elContrast) elContrast.addEventListener('change', onChange);
             if (elLargeText) elLargeText.addEventListener('change', onChange);
-            // no reduced-motion listener (control removed)
+            // Sem listener de movimento reduzido (controle removido)
             if (elReset) elReset.addEventListener('click', () => { writeA11y(a11yDefaults); applyA11y(a11yDefaults); showAnnouncement('Preferências de acessibilidade restauradas.','success'); });
 
-            // Weather toolbar controls removed (buttons no longer present)
+            // Controles climáticos da toolbar foram removidos (botões não existem mais)
 
-            // Floating toggle and keyboard shortcut (Alt+M)
+            // Toggle flutuante e atalho de teclado (Alt+M)
             const toggleToolbar = () => {
                 const toolbar = document.getElementById('a11y-toolbar');
                 if (!toolbar) return;
@@ -1616,13 +1616,13 @@ function init() {
             };
             const floatBtn = document.getElementById('a11y-toggle');
             if (floatBtn) floatBtn.addEventListener('click', toggleToolbar);
-            // Alt+M to toggle
+            // Atalho Alt+M para alternar
             window.addEventListener('keydown', (ev) => {
                 if ((ev.altKey || ev.metaKey) && (ev.key === 'm' || ev.key === 'M')) {
                     ev.preventDefault(); toggleToolbar();
                 }
             });
-            // Render home two-day forecast on load using last CEP if present
+            // Renderiza a previsão de dois dias na home usando o último CEP salvo
             try {
                 (async () => {
                     const lastCep = localStorage.getItem(STATS_LAST_CEP_KEY);
@@ -1647,7 +1647,7 @@ function init() {
             try { window.__APP_READY__ = true; } catch (e) {}
 }
 
-// Run init on DOMContentLoaded or immediately if already ready
+// Executa init no DOMContentLoaded ou imediatamente se o DOM já estiver pronto
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {

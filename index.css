@@ -2,14 +2,14 @@ body {
   background-color: #0f172a; /* Cor de fundo principal (slate-900) */
   color: #e2e8f0; /* Cor de texto principal (slate-200) */
 }
-/* Base responsive typography: scale slightly with viewport */
+/* Tipografia responsiva base: ajusta levemente conforme a largura da tela */
 html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 .card {
   background-color: #1e293b; /* Cor dos cards (slate-800) */
   border: 1px solid #334155; /* Cor da borda dos cards (slate-700) */
 }
 
-/* Accessibility helpers */
+/* Utilitários de acessibilidade */
 .a11y-high-contrast {
   background: #000 !important;
   color: #fff !important;
@@ -19,22 +19,22 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   border-color: #444 !important;
 }
 .a11y-large-text {
-  /* increase base font-size by 20% for accessibility */
+  /* aumenta o tamanho base da fonte em 20% para acessibilidade */
   font-size: 1.2em !important; /* 120% */
 }
-/* Reduced motion: remove animations/transitions */
+/* Movimento reduzido: remove animações/transições */
 .a11y-reduced-motion *, .a11y-reduced-motion *::before, .a11y-reduced-motion *::after {
   animation: none !important;
   transition: none !important;
 }
 
-/* Strong focus outline for keyboard users */
+/* Contorno de foco destacado para usuários de teclado */
 :focus {
   outline: 3px solid #ffdd57;
   outline-offset: 2px;
 }
 
-/* Accessibility toolbar specific styles (make controls black) */
+/* Estilos específicos da barra de acessibilidade (controles pretos) */
 #a11y-toolbar { background: #000 !important; color: #fff !important; }
 #a11y-toolbar .form-check-label, #a11y-toolbar .small { color: #fff !important; }
 #a11y-toolbar .form-check-input:checked { background-color: #000; border-color: #fff; }
@@ -42,7 +42,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #a11y-toolbar .btn-outline-secondary { color: #fff; border-color: #fff; background: #000; }
 #a11y-toolbar .btn-outline-secondary:hover { background: #111; border-color: #fff; }
 
-/* Collapsed toolbar and floating toggle button */
+/* Barra recolhida e botão flutuante de alternância */
 #a11y-toolbar.collapsed { height: 40px; overflow: hidden; padding-top: .25rem; padding-bottom: .25rem; }
 #a11y-toggle {
   position: fixed;
@@ -62,39 +62,39 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 }
 #a11y-toggle:focus { outline: 3px solid #ffdd57; }
 
-/* Weather strip icons */
+/* Ícones da faixa de clima */
 #stats-weather-strip .day-icon { display:flex; flex-direction:column; align-items:center; justify-content:center; width:48px; }
 #stats-weather-strip .day-icon .label { font-size:0.7rem; color:#cbd5e1; margin-top:2px; text-align:center; }
 #stats-weather-legend span { margin-right:12px; display:inline-flex; align-items:center; gap:6px; }
-/* Hide legend container if empty */
+/* Esconde o container da legenda quando estiver vazio */
 #stats-weather-legend:empty { display: none; }
 
-/* Home weather cards */
+/* Cards de clima na home */
 #home-weather-cards { align-items:center; }
 .weather-card { min-width:140px; max-width:220px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 .weather-card .title { font-weight:600; font-size:0.9rem; }
 .weather-card .temp { font-size:1.1rem; font-weight:700; }
 .weather-card .cond { font-size:0.85rem; color:#475569; }
 .a11y-high-contrast .weather-card { background:#000 !important; color:#fff !important; }
-/* toolbar weather controls removed */
+/* Controles climáticos da toolbar foram removidos */
 .weather-card .icon svg { width:36px; height:36px; }
 .day-icon svg { width:24px; height:24px; }
 
-/* Stats chart sizing: give more space to the chart */
+/* Tamanho do gráfico de estatísticas: dá mais espaço para o canvas */
 #stats-chart { width: 100% !important; height: 260px !important; }
 @media (max-width: 576px) {
   #stats-chart { height: 220px !important; }
 }
 
-/* Improve readability of services list in dark themes */
-/* Services list: ensure readable text even when global admin rules force white text */
+/* Melhora a legibilidade da lista de serviços em temas escuros */
+/* Lista de serviços: garante texto legível mesmo quando regras globais forçam branco */
 #services-list { background: #ffffff !important; border-radius: 6px; }
 #services-list .list-group-item { background: #ffffff !important; color: #0b1220 !important; border: 1px solid rgba(0,0,0,0.06) !important; }
-/* Force all children to inherit readable color (helps buttons, icons, labels) */
+/* Força todos os filhos a herdarem cor legível (botões, ícones, rótulos) */
 #services-list .list-group-item, #services-list .list-group-item * { color: #0b1220 !important; }
 #services-list .list-group-item .btn { color: #0b1220 !important; border-color: rgba(11,18,32,0.12) !important; }
 
-/* High-contrast overrides */
+/* Ajustes para alto contraste */
 .a11y-high-contrast #services-list { background: #0b1220 !important; }
 .a11y-high-contrast #services-list .list-group-item { background: #0b1220 !important; color: #e6eef8 !important; border-color: rgba(255,255,255,0.06) !important; }
 .a11y-high-contrast #services-list .list-group-item .btn { color: #fff !important; border-color: rgba(255,255,255,0.12) !important; }
@@ -152,7 +152,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   color: #f8fafc !important;
 }
 
-/* Slots grid for available times */
+/* Grade de horários disponíveis */
 #available-times-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -174,20 +174,20 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   border: 1px solid rgba(0,0,0,0.12);
 }
 #available-times-grid .slot.reserved {
-  background: #fecaca; /* light red */
+  background: #fecaca; /* vermelho claro */
   color: #000000;
-  border: 2px solid #ef4444 !important; /* red */
+  border: 2px solid #ef4444 !important; /* vermelho */
   cursor: not-allowed;
 }
 #available-times-grid .slot.unavailable {
-  background: #ffedd5; /* light orange */
+  background: #ffedd5; /* laranja claro */
   color: #000000;
-  border: 2px solid #f97316 !important; /* orange */
+  border: 2px solid #f97316 !important; /* laranja */
   cursor: not-allowed;
   opacity: 0.95;
 }
 
-/* If a slot is both reserved and unavailable, keep it red (reserved wins) */
+/* Se um horário estiver reservado e indisponível, mantém vermelho (reservado tem prioridade) */
 #available-times-grid .slot.reserved.unavailable {
   background: #fecaca !important;
   border-color: #ef4444 !important;
@@ -199,7 +199,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   box-shadow: 0 6px 12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) inset;
 }
 
-/* Ensure slot text is black even when parent rules force white in client view */
+/* Garante texto preto nos horários mesmo se regras da view do cliente forçarem branco */
 #client-view #available-times-grid .slot,
 #client-view #available-times-grid .slot .slot-label {
   color: #000000 !important;
@@ -234,7 +234,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   border-color: rgba(255,255,255,0.06) !important;
 }
 
-/* Admin stats: compact controls */
+/* Estatísticas do admin: controles compactos */
 #admin-stats-section .form-select-sm,
 #admin-stats-section .form-control-sm {
   padding: .25rem .5rem;
@@ -254,7 +254,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #admin-stats-section .len-30 {
   width: 30% !important;
 }
-/* Responsive widths for stats controls */
+/* Larguras responsivas para controles de estatísticas */
 @media (max-width: 575.98px) {
   #admin-stats-section .len-50 { width: 100% !important; }
   #admin-stats-section .len-30 { width: 100% !important; }
@@ -264,7 +264,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   margin-bottom: .25rem;
 }
 
-/* Observações textarea: force white text and placeholder */
+/* Textarea de observações: força texto e placeholder brancos */
 #observacoes {
   color: #ffffff !important;
   caret-color: #ffffff;
@@ -289,25 +289,25 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   color: #ffffff !important;
 }
 
-/* Strong override: style services list as black background with white text in admin view */
+/* Override forte: estiliza lista de serviços com fundo preto e texto branco na view do admin */
 #admin-view #services-list { background: #000000 !important; border-radius: 6px; padding: 6px; }
 #admin-view #services-list .list-group-item { background: #000000 !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.04) !important; }
-/* Force all children to be readable */
+/* Garante que todos os filhos permaneçam legíveis */
 #admin-view #services-list .list-group-item, #admin-view #services-list .list-group-item * { color: #ffffff !important; }
 #admin-view #services-list .list-group-item .btn { color: #ffffff !important; border-color: rgba(255,255,255,0.08) !important; background: transparent !important; }
 #admin-view #services-list .list-group-item .btn:hover { background: rgba(255,255,255,0.04) !important; }
 
 /* ========================= */
-/* Responsive adjustments    */
+/* Ajustes responsivos       */
 /* ========================= */
 @media (max-width: 992px) {
-  /* Reduce horizontal clutter on medium screens */
+  /* Reduz desordem horizontal em telas médias */
   header .container { gap: 8px; }
   .weather-card { min-width: 120px; }
 }
 
 @media (max-width: 576px) {
-  /* Stack header content */
+  /* Empilha o conteúdo do cabeçalho */
   header .container { flex-direction: column; align-items: flex-start; }
   #home-weather { margin-top: 6px; }
   #home-weather-cards { width: 100%; flex-wrap: wrap; gap: 8px; }
@@ -315,15 +315,15 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   .weather-card .temp { font-size: 1rem; }
   .weather-card .cond { font-size: 0.8rem; }
 
-  /* Time slots grid: make items smaller */
+  /* Grade de horários: deixa os itens menores */
   #available-times-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
   .slot { min-height: 44px; padding: 6px 4px; }
   .slot .slot-label { font-size: 0.9rem; }
 
-  /* Role selection: comfortable buttons without overflow */
+  /* Seleção de perfil: botões confortáveis sem overflow */
   #role-selection-view .btn-lg { padding: .6rem 1rem; font-size: 1.05rem; }
 
-  /* Tables: ensure responsive container takes full width */
+  /* Tabelas: garante container responsivo ocupando toda a largura */
   .table-responsive { width: 100%; }
 }
 

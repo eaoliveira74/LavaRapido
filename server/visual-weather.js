@@ -3,14 +3,14 @@ const fetch = require('node-fetch');
 const router = express.Router();
 
 const KEY = process.env.VISUALCROSSING_API_KEY;
-if (!KEY) console.warn('Visual Crossing API key not set (VISUALCROSSING_API_KEY) - /api/visual-weather will fail without it');
+if (!KEY) console.warn('Chave da Visual Crossing não configurada (VISUALCROSSING_API_KEY) - /api/visual-weather falhará sem ela');
 
-// Simple in-memory cache: key -> { ts, data }
+// Cache simples em memória: chave -> { ts, data }
 const cache = new Map();
-const TTL = 10 * 60 * 1000; // 10 minutes
+const TTL = 10 * 60 * 1000; // 10 minutos
 
 function normalizeCondition(text, precipprob) {
-  // If precipitation probability is high, prefer 'Chuvoso'
+  // Se a probabilidade de precipitação for alta, prioriza 'Chuvoso'
   try {
     const p = Number(precipprob || 0);
     if (!isNaN(p) && p >= 30) return 'Chuvoso';
@@ -52,12 +52,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Health/test endpoint for quick connectivity checks
+// Endpoint de teste/healthcheck para validar conectividade rapidamente
 router.get('/test', async (req, res) => {
   const info = { keyPresent: !!KEY, cacheSize: cache.size, ttlMs: TTL };
   if (!KEY) return res.json({ ok: true, info, note: 'No API key configured; proxy cannot fetch Visual Crossing.' });
   try {
-    // do a small fetch for today at a default location; don't fail the whole endpoint for fetch errors
+  // Faz uma busca simples para o dia atual em uma localização padrão; não deixa o endpoint falhar se houver erro
     const lat = req.query.lat || '-23.55';
     const lon = req.query.lon || '-46.63';
     const start = req.query.start || new Date().toISOString().split('T')[0];

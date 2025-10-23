@@ -9,7 +9,7 @@ RUN npm install --production --no-audit --no-fund
 # copy source
 COPY . ./
 
-# ensure data directories exist
+# garante que os diretórios de dados existam
 RUN mkdir -p /app/uploads /app/data
 
 EXPOSE 4000

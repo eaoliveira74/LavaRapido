@@ -30,9 +30,9 @@ jobs:
 
       - name: Build Vite site
         env:
-          # Set your Railway backend public URL as a repo secret BACKEND_URL
+          # Defina a URL pública do backend (Railway) como secret BACKEND_URL do repositório
           VITE_BACKEND_URL: ${{ secrets.BACKEND_URL }}
-          # Ensure correct base path when hosted at https://<owner>.github.io/<repo>/
+          # Garante o caminho base correto quando hospedado em https://<owner>.github.io/<repo>/
           VITE_BASE: /${{ github.event.repository.name }}/
         run: npm run build
 

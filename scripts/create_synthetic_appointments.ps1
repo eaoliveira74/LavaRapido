@@ -1,4 +1,4 @@
-# Create a tiny 1x1 PNG from base64 and POST 10 synthetic appointments to local backend
+# Cria um PNG 1x1 a partir de base64 e envia 10 agendamentos sintéticos para o backend local
 $base = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
 $bytes = [System.Convert]::FromBase64String($base)
 $tmp = Join-Path $env:TEMP 'tmp_comprovante.png'

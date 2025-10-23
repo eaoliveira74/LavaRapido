@@ -19,36 +19,36 @@ Frontend (GitHub Pages):
 
 O workflow .github/workflows/deploy-frontend.yml constrói o Vite usando VITE_BACKEND_URL=$BACKEND_URL do Secrets e publica no Pages.
 Assim, o frontend consumirá a API do Railway de qualquer dispositivo.
-Backend POC for LavaRapido
+POC de backend para LavaRapido
 
-This is a small Node/Express backend intended as a proof-of-concept to:
+Este é um backend simples em Node/Express, criado como prova de conceito para:
 
-- Accept appointment creation with optional `comprovante` file upload.
-- Store appointment metadata in `server/data/appointments.json`.
-- Save uploaded files to `server/uploads/`.
-- Provide simple admin login (password -> JWT) and protected admin endpoints to list, view, confirm, and delete appointments.
+- Aceitar a criação de agendamentos com upload opcional de `comprovante`.
+- Armazenar metadados dos agendamentos em `server/data/appointments.json`.
+- Salvar arquivos enviados em `server/uploads/`.
+- Oferecer login admin básico (senha → JWT) e endpoints protegidos para listar, visualizar, confirmar e remover agendamentos.
 
-Quickstart
+Início rápido
 
-1. Copy `.env.example` to `.env` and set `JWT_SECRET` (and `ADMIN_PASSWORD_HASH` optionally).
+1. Copie `.env.example` para `.env` e defina `JWT_SECRET` (e opcionalmente `ADMIN_PASSWORD_HASH`).
 
-2. Install dependencies:
+2. Instale as dependências:
 
    npm install
 
-3. Start server in dev mode (requires `nodemon`):
+3. Inicie o servidor em modo desenvolvimento (requer `nodemon`):
 
    npm run dev
 
-4. API endpoints
+4. Endpoints da API
 
 - POST /api/admin/login { password }
-- POST /api/appointments (multipart/form-data) fields: nomeCliente, telefoneCliente, servicoId, horario, data, observacoes, comprovante (file)
-- GET /api/appointments (requires Authorization: Bearer <token>)
-- GET /api/appointments/:id/comprovante (requires Authorization)
-- POST /api/appointments/:id/confirm (requires Authorization)
-- DELETE /api/appointments/:id (requires Authorization)
+- POST /api/appointments (multipart/form-data) campos: nomeCliente, telefoneCliente, servicoId, horario, data, observacoes, comprovante (arquivo)
+- GET /api/appointments (requer Authorization: Bearer <token>)
+- GET /api/appointments/:id/comprovante (requer Authorization)
+- POST /api/appointments/:id/confirm (requer Authorization)
+- DELETE /api/appointments/:id (requer Authorization)
 
-Notes
+Observações
 
-- This POC is intended for local development only. For production use, move file storage to durable external storage (S3, Azure Blob), secure secrets, and add rate limiting and better error handling.
+- Este POC é apenas para desenvolvimento local. Em produção, mova o armazenamento de arquivos para um serviço durável (S3, Azure Blob), proteja secrets e implemente rate limiting e tratamento de erros mais robusto.

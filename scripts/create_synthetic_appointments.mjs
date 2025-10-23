@@ -27,7 +27,7 @@ async function postAppointments() {
     } catch (e) {
       console.error('error', e.message);
     }
-    // small delay
+  // pequeno atraso
     await new Promise(r=>setTimeout(r,200));
   }
   try { fs.unlinkSync(tmp); } catch(e){}

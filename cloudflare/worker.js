@@ -15,7 +15,7 @@ async function sha256(str) {
   return btoa(String.fromCharCode(...new Uint8Array(hash)));
 }
 
-// Minimal HS256 JWT using Web Crypto
+// Implementação mínima de JWT HS256 usando Web Crypto
 async function signJWT(payload, secret, expSec = 12 * 60 * 60) {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
@@ -68,7 +68,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Health
+  // Healthcheck
     if (path === '/health') {
       try {
         const count = await env.DB.prepare('SELECT COUNT(1) as c FROM appointments').first();
@@ -76,7 +76,7 @@ export default {
       } catch { return ok({ status: 'ok', now: new Date().toISOString() }); }
     }
 
-    // Static read from R2: /uploads/<key>
+  // Leitura estática a partir do R2: /uploads/<chave>
     if (path.startsWith('/uploads/')) {
       const key = decodeURIComponent(path.replace(/^\/uploads\//, ''));
       const obj = await env.UPLOADS.get(key);
@@ -86,7 +86,7 @@ export default {
       return new Response(obj.body, { status: 200, headers: h });
     }
 
-    // Admin login
+  // Login do administrador
     if (path === '/api/admin/login' && request.method === 'POST') {
       try {
         const { password } = await request.json();
@@ -98,7 +98,7 @@ export default {
       } catch { return bad('invalid request', 400); }
     }
 
-    // Middleware: auth for admin routes
+  // Middleware: autenticação para rotas administrativas
     async function requireAdmin() {
       const auth = request.headers.get('authorization') || '';
       const parts = auth.split(' ');
@@ -108,7 +108,7 @@ export default {
       return payload;
     }
 
-    // Create appointment (multipart)
+  // Cria agendamento (multipart)
     if (path === '/api/appointments' && request.method === 'POST') {
       try {
         const form = await request.formData();
@@ -148,7 +148,7 @@ export default {
       }
     }
 
-    // List appointments (admin)
+  // Lista agendamentos (admin)
     if (path === '/api/appointments' && request.method === 'GET') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -157,13 +157,13 @@ export default {
       return ok(items);
     }
 
-    // Public appointments
+  // Lista pública de agendamentos
     if (path === '/api/appointments/public' && request.method === 'GET') {
       const rs = await env.DB.prepare(`SELECT id, nome_cliente as nomeCliente, servico_id as servicoId, data, horario, status FROM appointments`).all();
       return ok(rs?.results || []);
     }
 
-    // View comprovante (admin)
+  // Visualiza comprovante (admin)
     if (path.match(/^\/api\/appointments\/.+\/comprovante$/) && request.method === 'GET') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -177,7 +177,7 @@ export default {
       return new Response(obj.body, { status: 200, headers });
     }
 
-    // Confirm appointment (admin)
+  // Confirma agendamento (admin)
     if (path.match(/^\/api\/appointments\/.+\/confirm$/) && request.method === 'POST') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -189,19 +189,19 @@ export default {
       return ok(row);
     }
 
-    // Mark appointment as completed (admin)
+  // Marca agendamento como concluído (admin)
     if (path.match(/^\/api\/appointments\/.+\/complete$/) && request.method === 'POST') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
       const id = path.split('/')[3];
       await env.DB.prepare(`UPDATE appointments SET status = 'Concluído' WHERE id = ?`).bind(id).run();
-      // Increment daily stats for this appointment date
+  // Incrementa estatísticas diárias referentes a esse agendamento
       try {
         const row = await env.DB.prepare(`SELECT data, servico_id FROM appointments WHERE id = ?`).bind(id).first();
         if (row && row.data) {
-          // resolve price from service id when known; fallback 0 if unknown
+          // Resolvido o preço pelo id de serviço quando conhecido; caso contrário usa 0
           let price = 0;
-          // Optional: service price list can be mirrored here; keep minimal to avoid drift
+          // Opcional: tabela de preços dos serviços espelhada aqui; manter enxuta para evitar divergências
           const PRICE_MAP = {
             'lavagem-simples': 15.00,
             'lavagem-completa': 25.00,
@@ -218,7 +218,7 @@ export default {
       return ok(row);
     }
 
-    // Delete appointment (admin)
+  // Exclui agendamento (admin)
     if (path.match(/^\/api\/appointments\/.+$/) && request.method === 'DELETE') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -229,7 +229,7 @@ export default {
       return ok({ ok: true });
     }
 
-    // Visual weather proxy
+  // Proxy do Visual Crossing (clima)
   if (path === '/api/visual-weather' && request.method === 'GET') {
       const lat = url.searchParams.get('lat');
       const lon = url.searchParams.get('lon');
@@ -256,7 +256,7 @@ export default {
         feelslikemin: d.feelslikemin,
         precip: d.precip
       }));
-      // Best-effort: persist rain probability in stats_daily so charts use the same source as cards
+  // Melhor esforço: persiste probabilidade de chuva em stats_daily para alinhar gráficos e cards
       try {
         for (const d of days) {
           if (d && d.date && typeof d.precipprob !== 'undefined' && d.precipprob !== null) {
@@ -267,7 +267,7 @@ export default {
       return ok({ lat: j.latitude || parseFloat(lat), lon: j.longitude || parseFloat(lon), days });
     }
 
-    // Public: read-only access to daily stats for charts
+  // Público: leitura das estatísticas diárias para os gráficos
     if (path === '/api/stats-daily' && request.method === 'GET') {
       const start = url.searchParams.get('start');
       const end = url.searchParams.get('end');
@@ -276,7 +276,7 @@ export default {
       return ok(rs?.results || []);
     }
 
-    // Admin: trigger cleanup manually (requires admin bearer token)
+  // Admin: aciona limpeza manualmente (exige token administrador)
     if (path === '/api/admin/cleanup' && (request.method === 'POST' || request.method === 'GET')) {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -286,7 +286,7 @@ export default {
       return ok({ ok: true, days, ...stats });
     }
 
-    // Admin: prune old appointments (date before provided 'before' or today)
+  // Admin: remove agendamentos antigos (data anterior ao parâmetro 'before' ou hoje)
     if (path === '/api/admin/prune-appointments' && (request.method === 'POST' || request.method === 'GET')) {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -295,19 +295,19 @@ export default {
       return ok({ ok: true, before, ...res });
     }
 
-    // Admin: upsert/read daily stats for charts (cars washed, revenue, rain %)
+  // Admin: insere/lê estatísticas diárias para os gráficos (carros, receita, chuva)
     if (path === '/api/admin/stats-daily') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
       if (request.method === 'GET') {
-        // Range query: start=YYYY-MM-DD&end=YYYY-MM-DD
+  // Consulta por intervalo: start=YYYY-MM-DD&end=YYYY-MM-DD
         const start = url.searchParams.get('start');
         const end = url.searchParams.get('end');
         if (!start || !end) return bad('start and end required', 400);
         const rs = await env.DB.prepare(`SELECT date, cars_washed as carsWashed, total_revenue as totalRevenue, rain_probability as rainProbability FROM stats_daily WHERE date BETWEEN ? AND ? ORDER BY date ASC`).bind(start, end).all();
         return ok(rs?.results || []);
       } else if (request.method === 'POST') {
-        // Upsert for a single date
+  // Upsert para uma única data
         try {
           const body = await request.json();
           const date = body.date;
@@ -324,13 +324,13 @@ export default {
     return bad('Not found', 404);
   }
   ,
-  // Scheduled cleanup for old comprovantes in R2 (older than 10 days)
+  // Limpeza agendada para comprovantes antigos no R2 (mais de 10 dias)
   async scheduled(controller, env, ctx) {
-    // Run both: comprovante cleanup and appointment pruning
+  // Executa ambos: remoção de comprovantes e limpeza de agendamentos
     ctx.waitUntil((async () => {
       try { await cleanupOldComprovantes(env, 10); } catch {}
       try {
-        // Use today's date in UTC (cron runs at 03:00 UTC ~= 00:00 BRT)
+  // Usa a data de hoje em UTC (cron às 03:00 UTC ≈ 00:00 BRT)
         const today = new Date().toISOString().slice(0, 10);
         await pruneOldAppointments(env, today);
       } catch {}
@@ -338,7 +338,7 @@ export default {
   }
 };
 
-// Helper: cleanup comprovantes older than N days from R2 and clear DB references
+// Função auxiliar: remove comprovantes no R2 mais antigos que N dias e limpa referências no banco
 async function cleanupOldComprovantes(env, days = 10) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   let cursor = undefined;
@@ -360,10 +360,10 @@ async function cleanupOldComprovantes(env, days = 10) {
   return { removed, scanned };
 }
 
-// Helper: delete appointments older than a given date (data < beforeDate)
-// Also deletes associated comprovantes from R2
+// Função auxiliar: apaga agendamentos anteriores a uma data (data < beforeDate)
+// Também apaga os comprovantes correspondentes no R2
 async function pruneOldAppointments(env, beforeDate /* format YYYY-MM-DD */) {
-  // find rows to delete first
+  // Busca primeiro as linhas que serão excluídas
   const rows = await env.DB.prepare(`SELECT id, comprovante_key as key FROM appointments WHERE data < ?`).bind(beforeDate).all();
   const list = rows?.results || [];
   let deleted = 0;

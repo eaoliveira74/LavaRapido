@@ -10,10 +10,10 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
-// Security middlewares
+// Middlewares de segurança
 app.use(helmet());
 app.use(cors({ origin: true }));
-// parse JSON with a reasonable limit
+// Faz o parse de JSON com limite razoável
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
@@ -25,7 +25,7 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 if (!fs.existsSync(APPOINTMENTS_FILE)) fs.writeFileSync(APPOINTMENTS_FILE, '[]');
 
-// simple storage helpers
+// Funções simples de leitura/escrita no armazenamento em disco
 function readAppointments() {
   try {
     const raw = fs.readFileSync(APPOINTMENTS_FILE, 'utf8');
@@ -38,7 +38,7 @@ function writeAppointments(arr) {
   fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(arr, null, 2));
 }
 
-// Multer setup for file uploads with size limit (1 MB) and file filter
+// Configuração do Multer com limite de 1 MB e filtro de tipo de arquivo
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => {
@@ -49,7 +49,7 @@ const storage = multer.diskStorage({
 });
 
 function fileFilter (req, file, cb) {
-  // Accept images and PDFs only
+  // Aceita apenas imagens e PDFs
   const allowed = /jpeg|jpg|png|gif|pdf/;
   const mimetype = allowed.test((file.mimetype || '').toLowerCase());
   const extname = allowed.test(path.extname(file.originalname || '').toLowerCase());
@@ -63,17 +63,17 @@ const upload = multer({
   fileFilter
 });
 
-// Admin credentials: store bcrypt hash in env or default
+// Credenciais do admin: usa hash via env ou um padrão seguro apenas para testes
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin@2025', 8);
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 const JWT_EXPIRES = '12h';
 
-// Rate limiter for auth endpoints to slow brute force
+// Limitador de requisições em endpoints de autenticação para mitigar força bruta
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
 
-// Apply auth limiter to login route later
+// Limitador aplicado à rota de login logo abaixo
 
-// Auth endpoint (login with password)
+// Endpoint de autenticação (login com senha)
 app.post('/api/admin/login', authLimiter, (req, res) => {
   const { password } = req.body || {};
   if (!password) return res.status(400).json({ error: 'password required' });
@@ -82,7 +82,7 @@ app.post('/api/admin/login', authLimiter, (req, res) => {
   res.json({ token });
 });
 
-// Middleware to protect admin routes
+// Middleware que protege rotas administrativas
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).json({ error: 'missing authorization' });
@@ -97,10 +97,10 @@ function requireAdmin(req, res, next) {
   }
 }
 
-// Create appointment (with optional comprovante upload)
+// Cria agendamento (com upload opcional de comprovante)
 app.post('/api/appointments', upload.single('comprovante'), (req, res) => {
   const { nomeCliente, telefoneCliente, servicoId, horario, data, observacoes } = req.body || {};
-  // basic input length checks
+  // Validação básica de tamanho dos campos
   if ((nomeCliente || '').length > 100) return res.status(400).json({ error: 'nomeCliente too long' });
   if ((telefoneCliente || '').length > 30) return res.status(400).json({ error: 'telefoneCliente too long' });
   if ((observacoes || '').length > 500) return res.status(400).json({ error: 'observacoes too long' });
@@ -123,17 +123,17 @@ app.post('/api/appointments', upload.single('comprovante'), (req, res) => {
   res.status(201).json(newA);
 });
 
-// List appointments (admin)
+// Lista todos os agendamentos (admin)
 app.get('/api/appointments', requireAdmin, (req, res) => {
   const appointments = readAppointments();
   res.json(appointments);
 });
 
-// Public appointments listing (non-sensitive fields) - useful for clients to show availability
+// Lista pública de agendamentos (campos não sensíveis) para exibir disponibilidade
 app.get('/api/appointments/public', (req, res) => {
   try {
     const appointments = readAppointments();
-    // return limited fields to avoid exposing potentially sensitive data
+  // Retorna apenas campos essenciais para não expor dados sensíveis
     const publicList = appointments.map(a => ({ id: a.id, nomeCliente: a.nomeCliente, servicoId: a.servicoId, data: a.data, horario: a.horario, status: a.status }));
     res.json(publicList);
   } catch (e) {
@@ -141,8 +141,8 @@ app.get('/api/appointments/public', (req, res) => {
   }
 });
 
-// Download/view comprovante file (admin)
-// Return file as attachment; route is protected
+// Download/visualização de comprovante (admin)
+// Retorna o arquivo como anexo; rota protegida
 app.get('/api/appointments/:id/comprovante', requireAdmin, (req, res) => {
   const id = req.params.id;
   const appointments = readAppointments();
@@ -156,7 +156,7 @@ app.get('/api/appointments/:id/comprovante', requireAdmin, (req, res) => {
   });
 });
 
-// Confirm (keep) appointment (admin)
+// Confirma um agendamento (admin)
 app.post('/api/appointments/:id/confirm', requireAdmin, (req, res) => {
   const id = req.params.id;
   const appointments = readAppointments();
@@ -167,14 +167,14 @@ app.post('/api/appointments/:id/confirm', requireAdmin, (req, res) => {
   res.json(ap);
 });
 
-// Delete appointment (admin)
+// Exclui um agendamento (admin)
 app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
   const id = req.params.id;
   let appointments = readAppointments();
   const idx = appointments.findIndex(a => a.id === id);
   if (idx === -1) return res.status(404).json({ error: 'not found' });
   const [removed] = appointments.splice(idx, 1);
-  // remove file if exists
+  // Remove o arquivo associado, se existir
   if (removed.comprovantePath) {
     const abs = path.join(__dirname, removed.comprovantePath);
     if (fs.existsSync(abs)) {
@@ -185,10 +185,10 @@ app.delete('/api/appointments/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// Serve uploads statically for convenience (note: in production consider securing this)
+// Serve uploads de forma estática para conveniência (em produção ajustar segurança)
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Visual Crossing weather proxy (requires VISUALCROSSING_API_KEY in env)
+// Proxy de clima do Visual Crossing (exige VISUALCROSSING_API_KEY nas variáveis)
 try {
   const visualWeather = require('./visual-weather');
   app.use('/api/visual-weather', visualWeather);
@@ -196,7 +196,7 @@ try {
   console.warn('visual-weather route not loaded', e.message);
 }
 
-// Simple health endpoint for container healthchecks
+// Endpoint simples de saúde para healthchecks do container
 app.get('/health', (req, res) => {
   const appointments = readAppointments();
   res.json({ status: 'ok', now: new Date().toISOString(), appointments: appointments.length });
