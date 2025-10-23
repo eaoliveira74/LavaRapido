@@ -45,6 +45,8 @@ function init() {
   const clientView = document.getElementById('client-view');
   const adminView = document.getElementById('admin-view');
   const logoutButton = document.getElementById('logout-button');
+    const logoutSlotClient = document.getElementById('logout-slot-client');
+    const adminActionButtons = document.getElementById('admin-action-buttons');
   const announcementContainer = document.getElementById('announcement-container');
   
   // Elementos da visão do cliente
@@ -270,15 +272,18 @@ function init() {
     logoutButton.classList.add('d-none');
 
     if (role === 'client') {
+            if (logoutSlotClient) logoutSlotClient.appendChild(logoutButton);
       clientView.classList.remove('d-none');
       logoutButton.classList.remove('d-none');
       renderClientView();
     } else if (role === 'admin') {
+            if (adminActionButtons) adminActionButtons.appendChild(logoutButton);
       adminView.classList.remove('d-none');
       logoutButton.classList.remove('d-none');
       renderAdminView();
     } else {
       roleSelectionView.classList.remove('d-none');
+            if (logoutSlotClient) logoutSlotClient.appendChild(logoutButton);
     }
   };
   
@@ -1323,6 +1328,48 @@ function init() {
             return map;
         })();
 
+        const monthLabelPtBr = (year, monthIndex) => {
+            const dt = new Date(Date.UTC(year, monthIndex, 1));
+            const label = dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+            const shortYear = String(year).slice(-2);
+            return `${label}/${shortYear}`;
+        };
+
+        const aggregateYearToMonthlySeries = (entries) => {
+            const reference = start || refDate || getTodayString();
+            const year = Number(reference.slice(0, 4));
+            if (!Number.isFinite(year)) return { labels: [], counts: [], revenue: [], rainPercent: null };
+            const buckets = Array.from({ length: 12 }, (_, idx) => ({
+                key: `${year}-${String(idx + 1).padStart(2, '0')}`,
+                count: 0,
+                revenue: 0,
+                rainSum: 0,
+                rainCount: 0
+            }));
+            const bucketMap = new Map(buckets.map(b => [b.key, b]));
+            entries.forEach(([iso, data]) => {
+                if (!iso || typeof iso !== 'string') return;
+                const key = iso.slice(0, 7);
+                const bucket = bucketMap.get(key);
+                if (!bucket) return;
+                const countVal = Number(data?.count);
+                const revenueVal = Number(data?.revenue);
+                const rainVal = Number(data?.rain);
+                if (Number.isFinite(countVal)) bucket.count += countVal;
+                if (Number.isFinite(revenueVal)) bucket.revenue += revenueVal;
+                if (Number.isFinite(rainVal)) {
+                    bucket.rainSum += rainVal;
+                    bucket.rainCount += 1;
+                }
+            });
+            const labels = buckets.map((_, idx) => monthLabelPtBr(year, idx));
+            const counts = buckets.map(b => b.count);
+            const revenue = buckets.map(b => Math.round(b.revenue * 100) / 100);
+            const rainValues = buckets.map(b => (b.rainCount > 0 ? Math.round(b.rainSum / b.rainCount) : null));
+            const hasRain = rainValues.some(v => v != null);
+            return { labels, counts, revenue, rainPercent: hasRain ? rainValues : null };
+        };
+
     // Tenta estatísticas diárias vindas do banco
         const dbStats = await fetchDailyStats(start, end);
         if (Array.isArray(dbStats) && dbStats.length > 0) {
@@ -1344,35 +1391,52 @@ function init() {
                 merged.set(iso, current);
             });
             const sorted = Array.from(merged.entries()).sort(([a],[b]) => (a < b ? -1 : a > b ? 1 : 0));
-            const rainValues = [];
-            let hasRain = false;
-            labels = [];
-            counts = [];
-            revenue = [];
-            sorted.forEach(([, data]) => {
-                labels.push(data.label);
-                counts.push(data.count);
-                revenue.push(data.revenue);
-                if (data.rain != null) { rainValues.push(data.rain); hasRain = true; } else { rainValues.push(null); }
-            });
-            rainPercent = hasRain ? rainValues : null;
-        } else {
-            if (aggregatedByDate.size > 0) {
-                const sorted = Array.from(aggregatedByDate.entries()).sort(([a],[b]) => (a < b ? -1 : a > b ? 1 : 0));
+            if (range === 'year') {
+                const monthly = aggregateYearToMonthlySeries(sorted);
+                labels = monthly.labels;
+                counts = monthly.counts;
+                revenue = monthly.revenue;
+                rainPercent = monthly.rainPercent;
+            } else {
+                const rainValues = [];
+                let hasRain = false;
                 labels = [];
                 counts = [];
                 revenue = [];
-                sorted.forEach(([iso, data]) => {
-                    labels.push(formatDatePtBr(iso));
+                sorted.forEach(([, data]) => {
+                    labels.push(data.label);
                     counts.push(data.count);
-                    revenue.push(Math.round(data.revenue * 100) / 100);
+                    revenue.push(data.revenue);
+                    if (data.rain != null) { rainValues.push(data.rain); hasRain = true; } else { rainValues.push(null); }
                 });
+                rainPercent = hasRain ? rainValues : null;
+            }
+        } else {
+            if (aggregatedByDate.size > 0) {
+                const sorted = Array.from(aggregatedByDate.entries()).sort(([a],[b]) => (a < b ? -1 : a > b ? 1 : 0));
+                if (range === 'year') {
+                    const monthly = aggregateYearToMonthlySeries(sorted.map(([iso, data]) => [iso, { ...data }]));
+                    labels = monthly.labels;
+                    counts = monthly.counts;
+                    revenue = monthly.revenue;
+                    rainPercent = monthly.rainPercent;
+                } else {
+                    labels = [];
+                    counts = [];
+                    revenue = [];
+                    sorted.forEach(([iso, data]) => {
+                        labels.push(formatDatePtBr(iso));
+                        counts.push(data.count);
+                        revenue.push(Math.round(data.revenue * 100) / 100);
+                    });
+                    rainPercent = null;
+                }
             } else {
                 labels = [];
                 counts = [];
                 revenue = [];
+                rainPercent = null;
             }
-            rainPercent = null;
         }
 
     // Destrói gráfico anterior se existir

@@ -75,7 +75,7 @@
 
       <!-- Visão do Cliente (escondida por padrão) -->
       <div id="client-view" class="d-none">
-        <div class="d-flex justify-content-end mb-3">
+        <div class="d-flex justify-content-end mb-3" id="logout-slot-client">
           <button id="logout-button" class="btn btn-secondary d-none">Trocar Perfil</button>
         </div>
   <div class="row g-4">
@@ -168,7 +168,7 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h2 class="card-title h4">Menu do Administrador</h2>
-        <div class="d-flex gap-2 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap" id="admin-action-buttons">
           <button id="show-appointments-btn" class="btn btn-cyan">Ver Agendamentos</button>
           <button id="show-services-btn" class="btn btn-secondary">Gerenciar Serviços</button>
           <button id="show-stats-btn" class="btn btn-outline-light">Estatísticas</button>
