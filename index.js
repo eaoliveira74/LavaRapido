@@ -999,8 +999,17 @@ function init() {
     const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/></svg>';
     const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#78909C"/><g stroke="#03A9F4" stroke-linecap="round" stroke-width="1.6"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
 
-    const WEATHER_GRID_MAX_ROWS = 10;
-    const WEATHER_GRID_COLUMNS = 3;
+    const normalizeConditionLabel = (raw) => {
+        const text = (raw || '').toString();
+        const lower = text.toLowerCase();
+        if (lower.includes('ensolar') || lower.includes('sun') || lower.includes('clear')) return 'Ensolarado';
+        if (lower.includes('nublado') || lower.includes('cloud') || lower.includes('overcast')) return 'Nublado';
+        if (lower.includes('chuv') || lower.includes('rain') || lower.includes('storm') || lower.includes('precip')) return 'Chuvoso';
+        return text || 'Indeterminado';
+    };
+
+    const WEATHER_GRID_MAX_ROWS = 5;
+    const WEATHER_GRID_COLUMNS = 6;
     const WEATHER_GRID_MAX_ITEMS = WEATHER_GRID_MAX_ROWS * WEATHER_GRID_COLUMNS;
 
     const formatDatePtBr = (iso) => {
@@ -1029,10 +1038,25 @@ function init() {
             const label = Number.isNaN(dt.getTime())
                 ? iso
                 : dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            const conditionText = normalizeConditionLabel(day.conditionSimple || day.label || day.conditions || '');
+            const conditionKey = conditionText.toLowerCase();
+            let iconSvg = '';
+            if (conditionKey.startsWith('ensolar')) iconSvg = ICON_SUN;
+            else if (conditionKey.startsWith('nublado')) iconSvg = ICON_CLOUD;
+            else if (conditionKey.startsWith('chuv')) iconSvg = ICON_RAIN;
+            const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
             const entry = document.createElement('div');
             entry.className = 'weather-date-entry';
-            entry.textContent = label;
-            entry.title = formatDatePtBr(iso);
+            const longDate = formatDatePtBr(iso);
+            const precipDetail = (precip != null && !Number.isNaN(precip)) ? `${precip}% chuva` : '';
+            const safeCondition = conditionText || 'Condição não informada';
+            const iconMarkup = iconSvg || '<span class="date-icon-fallback" aria-hidden="true">?</span>';
+            entry.innerHTML = `<div class="date-icon">${iconMarkup}</div><div class="date-label">${label}</div>${precipDetail ? `<div class="date-extra">${precipDetail}</div>` : ''}`;
+            const titleParts = [longDate, safeCondition];
+            if (precipDetail) titleParts.push(precipDetail);
+            const descriptor = titleParts.filter(Boolean).join(' · ');
+            entry.title = descriptor;
+            entry.setAttribute('aria-label', descriptor);
             container.appendChild(entry);
         }
         if (container.childElementCount === 0) {
@@ -1405,14 +1429,6 @@ function init() {
         }
     let weather = null;
     updateHomeWeatherDates([]);
-        const normalizeConditionLabel = (raw) => {
-            const text = (raw || '').toString();
-            const lower = text.toLowerCase();
-            if (lower.includes('ensolar') || lower.includes('sun') || lower.includes('clear')) return 'Ensolarado';
-            if (lower.includes('nublado') || lower.includes('cloud') || lower.includes('overcast')) return 'Nublado';
-            if (lower.includes('chuv') || lower.includes('rain') || lower.includes('storm') || lower.includes('precip')) return 'Chuvoso';
-            return text || 'Indeterminado';
-        };
 
         const createWeatherDayIcon = (day, includeLabel = true) => {
             if (!day) return null;
@@ -1447,25 +1463,8 @@ function init() {
         const populateWeatherStrip = (days) => {
             const stripEl = document.getElementById('stats-weather-strip');
             if (!stripEl) return;
-            const isMonthly = (range === 'month');
-            if (isMonthly) {
-                stripEl.classList.add('two-row-grid');
-                stripEl.classList.remove('d-flex');
-                stripEl.classList.remove('align-items-center');
-                stripEl.style.display = '';
-            } else {
-                stripEl.classList.remove('two-row-grid');
-                stripEl.style.display = '';
-                if (!stripEl.classList.contains('d-flex')) stripEl.classList.add('d-flex');
-                if (!stripEl.classList.contains('gap-2')) stripEl.classList.add('gap-2');
-                stripEl.classList.add('align-items-center');
-            }
             stripEl.innerHTML = '';
-            if (!Array.isArray(days) || days.length === 0) return;
-            days.forEach(day => {
-                const iconEl = createWeatherDayIcon(day, false);
-                if (iconEl) stripEl.appendChild(iconEl);
-            });
+            stripEl.classList.add('d-none');
         };
 
         try {
