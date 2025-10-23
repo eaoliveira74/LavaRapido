@@ -72,6 +72,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #stats-weather-legend:empty { display: none; }
 
 /* Cards de clima na home */
+#home-weather-layout { align-items: stretch; }
 #home-weather-cards { align-items:center; }
 .weather-card { min-width:140px; max-width:220px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 .weather-card .title { font-weight:600; font-size:0.9rem; }
@@ -81,6 +82,35 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 /* Controles climáticos da toolbar foram removidos */
 .weather-card .icon svg { width:36px; height:36px; }
 .day-icon svg { width:24px; height:24px; }
+
+.weather-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  gap: 6px;
+  min-width: 210px;
+  max-width: 330px;
+}
+.weather-dates-grid:empty { display: none; }
+.weather-date-entry {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  text-align: center;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+@media (max-width: 992px) {
+  .weather-dates-grid { min-width: 0; max-width: none; }
+}
+@media (max-width: 768px) {
+  .weather-dates-grid { grid-template-columns: repeat(2, minmax(90px, 1fr)); }
+}
+@media (max-width: 480px) {
+  .weather-dates-grid { grid-template-columns: repeat(1, minmax(120px, 1fr)); }
+}
 
 /* Tamanho do gráfico de estatísticas: dá mais espaço para o canvas */
 #stats-chart { width: 100% !important; height: 260px !important; }

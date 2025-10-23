@@ -999,6 +999,49 @@ function init() {
     const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/></svg>';
     const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#78909C"/><g stroke="#03A9F4" stroke-linecap="round" stroke-width="1.6"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
 
+    const WEATHER_GRID_MAX_ROWS = 10;
+    const WEATHER_GRID_COLUMNS = 3;
+    const WEATHER_GRID_MAX_ITEMS = WEATHER_GRID_MAX_ROWS * WEATHER_GRID_COLUMNS;
+
+    const formatDatePtBr = (iso) => {
+        if (!iso) return '';
+        const dt = new Date(`${iso}T00:00:00`);
+        if (Number.isNaN(dt.getTime())) return iso;
+        return dt.toLocaleDateString('pt-BR');
+    };
+
+    const updateHomeWeatherDates = (days) => {
+        const container = document.getElementById('home-weather-dates');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!Array.isArray(days) || days.length === 0) {
+            container.classList.add('d-none');
+            return;
+        }
+        const maxItems = Math.min(days.length, WEATHER_GRID_MAX_ITEMS);
+        for (let i = 0; i < maxItems; i += 1) {
+            const day = days[i];
+            if (!day) continue;
+            const isoCandidate = (day.date || day.datetime || day.dateStr || '').toString();
+            const iso = isoCandidate.slice(0, 10);
+            if (!iso) continue;
+            const dt = new Date(`${iso}T00:00:00`);
+            const label = Number.isNaN(dt.getTime())
+                ? iso
+                : dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            const entry = document.createElement('div');
+            entry.className = 'weather-date-entry';
+            entry.textContent = label;
+            entry.title = formatDatePtBr(iso);
+            container.appendChild(entry);
+        }
+        if (container.childElementCount === 0) {
+            container.classList.add('d-none');
+        } else {
+            container.classList.remove('d-none');
+        }
+    };
+
     // Busca clima através do proxy do Visual Crossing rodando no servidor
     async function fetchVisualWeather(lat, lon, startDate, endDate) {
         try {
@@ -1250,11 +1293,6 @@ function init() {
             return map;
         })();
 
-        const formatPtBr = (iso) => {
-            const dt = new Date(iso + 'T00:00:00');
-            return isNaN(dt.getTime()) ? iso : dt.toLocaleDateString('pt-BR');
-        };
-
     // Tenta estatísticas diárias vindas do banco
         const dbStats = await fetchDailyStats(start, end);
         if (Array.isArray(dbStats) && dbStats.length > 0) {
@@ -1263,14 +1301,14 @@ function init() {
                 const iso = (r.date || '').toString().slice(0, 10);
                 if (!withinBounds(iso)) return;
                 merged.set(iso, {
-                    label: formatPtBr(iso),
+                    label: formatDatePtBr(iso),
                     count: Number(r.carsWashed || 0),
                     revenue: Number(r.totalRevenue || 0),
                     rain: (r.rainProbability == null) ? null : Math.round(Number(r.rainProbability))
                 });
             });
             aggregatedByDate.forEach((agg, iso) => {
-                const current = merged.get(iso) || { label: formatPtBr(iso), count: 0, revenue: 0, rain: null };
+                const current = merged.get(iso) || { label: formatDatePtBr(iso), count: 0, revenue: 0, rain: null };
                 if (typeof agg.count === 'number' && agg.count > current.count) current.count = agg.count;
                 if (typeof agg.revenue === 'number' && agg.revenue > current.revenue) current.revenue = Math.round(agg.revenue * 100) / 100;
                 merged.set(iso, current);
@@ -1295,7 +1333,7 @@ function init() {
                 counts = [];
                 revenue = [];
                 sorted.forEach(([iso, data]) => {
-                    labels.push(formatPtBr(iso));
+                    labels.push(formatDatePtBr(iso));
                     counts.push(data.count);
                     revenue.push(Math.round(data.revenue * 100) / 100);
                 });
@@ -1365,7 +1403,8 @@ function init() {
                 }
             }
         }
-        let weather = null;
+    let weather = null;
+    updateHomeWeatherDates([]);
         const normalizeConditionLabel = (raw) => {
             const text = (raw || '').toString();
             const lower = text.toLowerCase();
@@ -1375,7 +1414,7 @@ function init() {
             return text || 'Indeterminado';
         };
 
-        const createWeatherDayIcon = (day) => {
+        const createWeatherDayIcon = (day, includeLabel = true) => {
             if (!day) return null;
             const isoCandidate = (day.date || day.datetime || '').toString();
             const iso = isoCandidate.slice(0, 10);
@@ -1400,7 +1439,8 @@ function init() {
             dayDiv.setAttribute('aria-label', `${label}: ${condition}`);
             const precipTxt = (precip != null && !Number.isNaN(precip)) ? ` (${precip}% precip)` : '';
             dayDiv.title = `${label}: ${tooltipDetail || condition}${precipTxt}`;
-            dayDiv.innerHTML = `${iconSvg}<div class="label">${label}</div>`;
+            const labelMarkup = includeLabel ? `<div class="label">${label}</div>` : '';
+            dayDiv.innerHTML = `${iconSvg}${labelMarkup}`;
             return dayDiv;
         };
 
@@ -1423,7 +1463,7 @@ function init() {
             stripEl.innerHTML = '';
             if (!Array.isArray(days) || days.length === 0) return;
             days.forEach(day => {
-                const iconEl = createWeatherDayIcon(day);
+                const iconEl = createWeatherDayIcon(day, false);
                 if (iconEl) stripEl.appendChild(iconEl);
             });
         };
@@ -1490,6 +1530,8 @@ function init() {
         } catch (err) {
             console.error('Erro ao buscar weather:', err);
         }
+
+        updateHomeWeatherDates(weather);
 
     // Calcula e exibe a distribuição percentual das condições climáticas na visão de estatísticas
         try {
