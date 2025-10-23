@@ -93,6 +93,11 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 /* Cards de clima na home */
 #home-weather-layout { align-items: stretch; }
 #home-weather-cards { align-items:center; }
+#home-weather-cards,
+.weather-dates-wrapper {
+  width: 100%;
+}
+
 .weather-card { min-width:140px; max-width:220px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 .weather-card .title { font-weight:600; font-size:0.9rem; }
 .weather-card .temp { font-size:1.1rem; font-weight:700; }
@@ -109,6 +114,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   position: relative;
   --weather-row-height: 88px;
   --weather-gap: 8px;
+}
+
+.weather-dates-grid {
+  margin-left: auto;
 }
 
 .weather-dates-grid {
