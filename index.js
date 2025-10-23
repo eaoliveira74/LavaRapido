@@ -290,6 +290,10 @@ function init() {
   // --- 4. FUNÇÕES DE RENDERIZAÇÃO (ATUALIZAÇÃO DA INTERFACE) ---
 
   const renderClientView = () => {
+        if (logoutSlotClient && !logoutSlotClient.contains(logoutButton)) {
+            logoutSlotClient.appendChild(logoutButton);
+        }
+        if (logoutButton) logoutButton.classList.remove('d-none');
         populateServiceSelect();
     // Atualiza os agendamentos públicos (servidor) para recalcular disponibilidade e refletir na UI
         fetchPublicAppointments().then(() => updateAvailableTimes()).catch(() => updateAvailableTimes());
@@ -299,6 +303,10 @@ function init() {
     // (adiado) -- carregamento inicial de agendamentos públicos será feito após a definição da função
   
   const renderAdminView = (activeTab = 'appointments') => {
+        if (adminActionButtons && !adminActionButtons.contains(logoutButton)) {
+            adminActionButtons.appendChild(logoutButton);
+        }
+        if (logoutButton) logoutButton.classList.remove('d-none');
     // Se houver token ativo, tenta buscar os agendamentos diretamente do servidor
       if (adminToken) fetchAdminAppointments().catch(() => {});
       renderAppointmentsTable();
