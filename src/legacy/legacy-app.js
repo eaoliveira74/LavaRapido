@@ -1,13 +1,11 @@
-// Bootstrap é carregado via bundler (src/main.js), logo o objeto global é exposto em window.
-const bootstrap = typeof window !== 'undefined' ? window.bootstrap : undefined;
-
 let hasInitialized = false;
 
 // Encapsula a inicialização em uma função nomeada para executar mesmo se o DOMContentLoaded já tiver ocorrido
-export function init(appStore) {
+export function init(appStore, bootstrapOverride) {
     if (hasInitialized) {
         return;
     }
+    const bootstrap = bootstrapOverride || (typeof window !== 'undefined' ? window.bootstrap : undefined);
     if (!bootstrap) {
         console.error('Bootstrap JS não está disponível; a camada legada não pôde ser iniciada.');
         return;
