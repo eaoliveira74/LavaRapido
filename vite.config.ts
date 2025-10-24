@@ -4,8 +4,9 @@ import vue from '@vitejs/plugin-vue';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
-  // Allow overriding base path for GitHub Pages (e.g., "/<repo>/")
-  const base = env.VITE_BASE || '/';
+  // Allow overriding base path for GitHub Pages (e.g., "/<repo>/").
+  // Some CI providers inject the variable via process.env only, so honor both sources.
+  const base = env.VITE_BASE || process.env.VITE_BASE || '/';
   return {
     base,
     plugins: [vue()],
