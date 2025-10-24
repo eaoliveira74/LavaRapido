@@ -1,7 +1,14 @@
 // O objeto 'bootstrap' está disponível globalmente pois foi carregado via CDN no index.html.
 
+let hasInitialized = false;
+
 // Encapsula a inicialização em uma função nomeada para executar mesmo se o DOMContentLoaded já tiver ocorrido
-function init() {
+export function init(appStore) {
+    if (hasInitialized) {
+        return;
+    }
+    hasInitialized = true;
+    const store = appStore || null;
 
   // --- 1. ESTADO DA APLICAÇÃO ---
   // Aqui guardamos todos os dados que a aplicação utiliza.
@@ -30,11 +37,28 @@ function init() {
   // Variável para guardar o agendamento a ser notificado
   let currentNotificationAppointment = null;
     // Token de autenticação do administrador (JWT) usado em chamadas protegidas da API
-    let adminToken = localStorage.getItem('adminToken') || null;
+    const readAdminToken = () => {
+        if (store && store.adminToken != null) return store.adminToken;
+        try {
+            return localStorage.getItem('adminToken');
+        } catch (err) {
+            console.warn('Não foi possível ler adminToken do localStorage', err);
+            return null;
+        }
+    };
+    let adminToken = readAdminToken();
     const setAdminToken = (t) => {
-        adminToken = t;
-        if (t) localStorage.setItem('adminToken', t);
-        else localStorage.removeItem('adminToken');
+        adminToken = t || null;
+        if (store && typeof store.setAdminToken === 'function') {
+            store.setAdminToken(adminToken);
+            return;
+        }
+        try {
+            if (adminToken) localStorage.setItem('adminToken', adminToken);
+            else localStorage.removeItem('adminToken');
+        } catch (err) {
+            console.warn('Não foi possível persistir adminToken', err);
+        }
     };
     let serverAppointments = null;
     let publicAppointments = null;
@@ -265,7 +289,10 @@ function init() {
   /**
    * Troca a visualização entre cliente, admin e seleção de perfil.
    */
-  const switchView = (role) => {
+    const switchView = (role) => {
+        if (store && typeof store.setRole === 'function') {
+            store.setRole(role || 'selection');
+        }
     roleSelectionView.classList.add('d-none');
     clientView.classList.add('d-none');
     adminView.classList.add('d-none');
@@ -1899,11 +1926,7 @@ function init() {
             try { (async () => { try { await fetchPublicAppointments(); } catch(_){} })(); } catch (e) { /* ignore network errors */ }
             // Sinalizar que a app está pronta (para testes)
             try { window.__APP_READY__ = true; } catch (e) {}
-}
-
-// Executa init no DOMContentLoaded ou imediatamente se o DOM já estiver pronto
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
+            if (store && typeof store.setAppReady === 'function') {
+                store.setAppReady(true);
+            }
 }
