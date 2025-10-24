@@ -1,10 +1,15 @@
-// O objeto 'bootstrap' está disponível globalmente pois foi carregado via CDN no index.html.
+// Bootstrap é carregado via bundler (src/main.js), logo o objeto global é exposto em window.
+const bootstrap = typeof window !== 'undefined' ? window.bootstrap : undefined;
 
 let hasInitialized = false;
 
 // Encapsula a inicialização em uma função nomeada para executar mesmo se o DOMContentLoaded já tiver ocorrido
 export function init(appStore) {
     if (hasInitialized) {
+        return;
+    }
+    if (!bootstrap) {
+        console.error('Bootstrap JS não está disponível; a camada legada não pôde ser iniciada.');
         return;
     }
     hasInitialized = true;
