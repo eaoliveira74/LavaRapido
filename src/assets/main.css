@@ -200,13 +200,16 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 .weather-dates-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(64px, 1fr));
+  grid-template-rows: repeat(5, var(--weather-row-height));
+  grid-auto-rows: var(--weather-row-height);
   gap: var(--weather-gap);
   min-width: 260px;
   max-width: 420px;
 }
 
 body[data-active-role="admin"] .weather-dates-grid {
-  grid-template-columns: repeat(10, minmax(72px, 1fr));
+  grid-template-columns: repeat(6, minmax(72px, 1fr));
+  grid-template-rows: repeat(5, var(--weather-row-height));
   grid-auto-rows: var(--weather-row-height);
   grid-auto-flow: row;
   min-width: 0;
@@ -215,13 +218,13 @@ body[data-active-role="admin"] .weather-dates-grid {
 }
 
 body[data-active-role="client"] .weather-dates-grid {
-  grid-template-columns: repeat(10, minmax(64px, 1fr));
-  grid-template-rows: repeat(3, var(--weather-row-height));
+  grid-template-columns: repeat(6, minmax(64px, 1fr));
+  grid-template-rows: repeat(5, var(--weather-row-height));
   grid-auto-rows: var(--weather-row-height);
   grid-auto-flow: row;
   min-width: 0;
   max-width: 100%;
-  max-height: calc(var(--weather-row-height) * 3 + var(--weather-gap) * 2);
+  max-height: calc(var(--weather-row-height) * 5 + var(--weather-gap) * 4);
   overflow-y: auto;
 }
 .weather-dates-grid:empty { display: none; }
