@@ -1061,13 +1061,23 @@ export function init(appStore, bootstrapOverride) {
     const writeCepCache = (c) => { try { localStorage.setItem(CEP_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
 
     // Ícones SVG usados na visão de estatísticas (pequenos e inline)
-    const ICON_SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="#FFC107"/><g stroke="#FFC107" stroke-width="1.4" stroke-linecap="round"><path d="M12 1.8v2.4"/><path d="M12 19.8v2.4"/><path d="M4.4 4.4l1.7 1.7"/><path d="M17.9 17.9l1.7 1.7"/><path d="M1.8 12h2.4"/><path d="M19.8 12h2.4"/><path d="M4.4 19.6l1.7-1.7"/><path d="M17.9 6.1l1.7-1.7"/></g></svg>';
+    const ICON_PARTLY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="4" fill="#FFC107"/><path d="M5.5 4.2l1.2 1.2" stroke="#FFC107" stroke-width="1.2" stroke-linecap="round"/><path d="M9 3v-1.6" stroke="#FFC107" stroke-width="1.2" stroke-linecap="round"/><path d="M12.5 4.2L11.3 5.4" stroke="#FFC107" stroke-width="1.2" stroke-linecap="round"/><path d="M19 17.6A5.6 5.6 0 0 0 13.4 12H12a4 4 0 1 0-3.9 3.5H19z" fill="#B0BEC5"/></svg>';
     const ICON_CLOUD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#90A4AE"/></svg>';
     const ICON_RAIN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.58A5.59 5.59 0 0 0 14.42 12H13a4 4 0 1 0-7.9 1.56A4 4 0 0 0 6 20h14a0 0 0 0 0 0-2.42z" fill="#78909C"/><g stroke="#03A9F4" stroke-linecap="round" stroke-width="1.6"><path d="M8 21l0-3"/><path d="M12 21l0-3"/><path d="M16 21l0-3"/></g></svg>';
+
+    const iconSvgForCondition = (condition) => {
+        const key = (condition || '').toString().trim().toLowerCase();
+    if (key.startsWith('ensolar')) return ICON_SUN;
+    if (key.includes('parcial') || key.includes('partial') || key.includes('partly')) return ICON_PARTLY;
+        if (key.startsWith('nublado')) return ICON_CLOUD;
+        if (key.startsWith('chuv')) return ICON_RAIN;
+        return '';
+    };
 
     const normalizeConditionLabel = (raw) => {
         const text = (raw || '').toString();
         const lower = text.toLowerCase();
+        if (lower.includes('parcial') || lower.includes('partial') || lower.includes('partly') || (lower.includes('cloud') && lower.includes('partial')) || lower.includes('mainly clear')) return 'Parcialmente Nublado';
         if (lower.includes('ensolar') || lower.includes('sun') || lower.includes('clear')) return 'Ensolarado';
         if (lower.includes('nublado') || lower.includes('cloud') || lower.includes('overcast')) return 'Nublado';
         if (lower.includes('chuv') || lower.includes('rain') || lower.includes('storm') || lower.includes('precip')) return 'Chuvoso';
@@ -1106,11 +1116,7 @@ export function init(appStore, bootstrapOverride) {
                 ? iso
                 : dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
             const conditionText = normalizeConditionLabel(day.conditionSimple || day.label || day.conditions || '');
-            const conditionKey = conditionText.toLowerCase();
-            let iconSvg = '';
-            if (conditionKey.startsWith('ensolar')) iconSvg = ICON_SUN;
-            else if (conditionKey.startsWith('nublado')) iconSvg = ICON_CLOUD;
-            else if (conditionKey.startsWith('chuv')) iconSvg = ICON_RAIN;
+            const iconSvg = iconSvgForCondition(conditionText);
             const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
             const entry = document.createElement('div');
             entry.className = 'weather-date-entry';
@@ -1154,7 +1160,7 @@ export function init(appStore, bootstrapOverride) {
     }
 
     // --- Weather client-side cache (localStorage) ---
-    const WEATHER_CACHE_KEY = 'weatherCache_v1';
+    const WEATHER_CACHE_KEY = 'weatherCache_v2';
     const WEATHER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
     const readWeatherCache = () => { try { return JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}'); } catch (e) { return {}; } };
     const writeWeatherCache = (c) => { try { localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
@@ -1223,10 +1229,11 @@ export function init(appStore, bootstrapOverride) {
             const renderCard = (el, day, label) => {
                 if (!el) return;
                 if (!day) { el.innerHTML = `<div class="title">${label}</div><div class="cond">Indisponível</div>`; return; }
-                const cond = day.conditionSimple || day.label || (day.conditions || '') || 'Indeterminado';
+                const rawCondition = day.conditionSimple || day.label || (day.conditions || '') || 'Indeterminado';
+                const cond = normalizeConditionLabel(rawCondition);
                 const tmax = Math.round(day.tempmax != null ? day.tempmax : (day.temp != null ? day.temp : 0));
                 const tmin = Math.round(day.tempmin != null ? day.tempmin : (day.temp != null ? day.temp : 0));
-                const icon = (cond === 'Ensolarado') ? ICON_SUN : (cond === 'Nublado' ? ICON_CLOUD : (cond === 'Chuvoso' ? ICON_RAIN : ''));
+                const icon = iconSvgForCondition(cond);
                 const feelsMax = (day.feelslikemax != null) ? Math.round(day.feelslikemax) : null;
                 const feelsMin = (day.feelslikemin != null) ? Math.round(day.feelslikemin) : null;
                 const precipProb = (day.precipprob != null) ? Math.round(day.precipprob) : null;
@@ -1263,9 +1270,10 @@ export function init(appStore, bootstrapOverride) {
             const j = await res.json();
             // Converte códigos meteorológicos em rótulos e ícones simples
             const codeToLabelAndIcon = (c) => {
-                // 0 = clear sky, 1-3 mainly clear/partly cloudy/overcast, 51+ light-moderate precipitation
+                // 0 = clear sky, 1 = mainly clear, 2 = partly cloudy, 3 = overcast, 51+ precip
                 if (c === 0) return { label: 'Ensolarado', icon: '☀️' };
-                if ([1,2,3].includes(c)) return { label: 'Nublado', icon: '☁️' };
+                if (c === 1 || c === 2) return { label: 'Parcialmente Nublado', icon: '⛅' };
+                if (c === 3) return { label: 'Nublado', icon: '☁️' };
                 if (c >= 51) return { label: 'Chuvoso', icon: '🌧️' };
                 return { label: 'Indeterminado', icon: '❓' };
             };
@@ -1607,11 +1615,7 @@ export function init(appStore, bootstrapOverride) {
             if (!label) label = day.displayDate || day.dateStr || '-';
             const baseCondition = day.conditionSimple || day.label || day.conditions || '';
             const condition = normalizeConditionLabel(baseCondition);
-            const conditionKey = condition.toLowerCase();
-            let iconSvg = '';
-            if (conditionKey.startsWith('ensolar')) iconSvg = ICON_SUN;
-            else if (conditionKey.startsWith('nublado')) iconSvg = ICON_CLOUD;
-            else if (conditionKey.startsWith('chuv')) iconSvg = ICON_RAIN;
+            const iconSvg = iconSvgForCondition(condition);
             const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
             const tooltipDetail = (day.conditions || baseCondition || condition || '').toString();
             const dayDiv = document.createElement('div');
@@ -1651,6 +1655,7 @@ export function init(appStore, bootstrapOverride) {
                         return sp;
                     };
                     legendEl.appendChild(makeSpan(ICON_SUN, 'Ensolarado'));
+                    legendEl.appendChild(makeSpan(ICON_PARTLY, 'Parcialmente Nublado'));
                     legendEl.appendChild(makeSpan(ICON_CLOUD, 'Nublado'));
                     legendEl.appendChild(makeSpan(ICON_RAIN, 'Chuvoso'));
                 }
@@ -1678,6 +1683,7 @@ export function init(appStore, bootstrapOverride) {
                             return sp;
                         };
                         legendEl.appendChild(makeSpan(ICON_SUN, 'Ensolarado'));
+                        legendEl.appendChild(makeSpan(ICON_PARTLY, 'Parcialmente Nublado'));
                         legendEl.appendChild(makeSpan(ICON_CLOUD, 'Nublado'));
                         legendEl.appendChild(makeSpan(ICON_RAIN, 'Chuvoso'));
                     }
@@ -1702,11 +1708,12 @@ export function init(appStore, bootstrapOverride) {
         try {
             if (weather && weather.length) {
                 const totalDays = weather.length;
-                const counts = { Ensolarado: 0, Nublado: 0, Chuvoso: 0, Indeterminado: 0 };
+                const counts = { Ensolarado: 0, 'Parcialmente Nublado': 0, Nublado: 0, Chuvoso: 0, Indeterminado: 0 };
                 weather.forEach(d => {
                     const category = normalizeConditionLabel(d.conditionSimple || d.label || d.conditions || '');
                     const key = category.toLowerCase();
                     if (key.startsWith('ensolar')) counts.Ensolarado++;
+                    else if (key.includes('parcial')) counts['Parcialmente Nublado']++;
                     else if (key.startsWith('nublado')) counts.Nublado++;
                     else if (key.startsWith('chuv')) counts.Chuvoso++;
                     else counts.Indeterminado++;
@@ -1715,6 +1722,7 @@ export function init(appStore, bootstrapOverride) {
                 // Monta o resumo em HTML
                 const parts = [];
                 parts.push(`<div class="me-3">${ICON_SUN} <strong>Ensolarado</strong> ${percent(counts.Ensolarado)}% (${counts.Ensolarado}/${totalDays})</div>`);
+                parts.push(`<div class="me-3">${ICON_PARTLY} <strong>Parcialmente Nublado</strong> ${percent(counts['Parcialmente Nublado'])}% (${counts['Parcialmente Nublado']}/${totalDays})</div>`);
                 parts.push(`<div class="me-3">${ICON_CLOUD} <strong>Nublado</strong> ${percent(counts.Nublado)}% (${counts.Nublado}/${totalDays})</div>`);
                 parts.push(`<div class="me-3">${ICON_RAIN} <strong>Chuvoso</strong> ${percent(counts.Chuvoso)}% (${counts.Chuvoso}/${totalDays})</div>`);
                 if (counts.Indeterminado > 0) parts.push(`<div class="me-3">❓ <strong>Indeterminado</strong> ${percent(counts.Indeterminado)}% (${counts.Indeterminado}/${totalDays})</div>`);
@@ -1733,11 +1741,7 @@ export function init(appStore, bootstrapOverride) {
                 const today = weather.find(d => d.date === todayISO) || weather[0];
                 if (today) {
                     const todayCondition = normalizeConditionLabel(today.conditionSimple || today.label || today.conditions || '');
-                    const todayKey = todayCondition.toLowerCase();
-                    let iconSvg = '';
-                    if (todayKey.startsWith('ensolar')) iconSvg = ICON_SUN;
-                    else if (todayKey.startsWith('nublado')) iconSvg = ICON_CLOUD;
-                    else if (todayKey.startsWith('chuv')) iconSvg = ICON_RAIN;
+                    const iconSvg = iconSvgForCondition(todayCondition);
                     const tmax = Math.round(today.tempmax != null ? today.tempmax : (today.temp != null ? today.temp : 0));
                     const tmin = Math.round(today.tempmin != null ? today.tempmin : (today.temp != null ? today.temp : 0));
                     const feelsMax = (today.feelslikemax != null) ? Math.round(today.feelslikemax) : null;
