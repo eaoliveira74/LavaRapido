@@ -1431,6 +1431,34 @@ export function init(appStore, bootstrapOverride) {
             return { labels, counts, revenue, rainPercent: hasRain ? rainValues : null };
         };
 
+        const maybeFillAnnualRainFromWeather = (weatherDays) => {
+            if (range !== 'year') return;
+            if (!statsChart || !Array.isArray(weatherDays) || weatherDays.length === 0) return;
+            const rainDataset = statsChart.data.datasets.find(ds => ds.label === '% Chuva');
+            if (!rainDataset) return;
+            const dataArray = Array.isArray(rainDataset.data) ? rainDataset.data : [];
+            const needsFill = dataArray.length === 0 || dataArray.every(v => v == null || Number.isNaN(v));
+            if (!needsFill) return;
+            const referenceYear = (start || refDate || getTodayString()).slice(0, 4);
+            const months = Array.from({ length: 12 }, () => ({ sum: 0, count: 0 }));
+            weatherDays.forEach(day => {
+                const isoCandidate = (day.date || day.datetime || day.dateStr || '').toString();
+                if (!isoCandidate.startsWith(referenceYear)) return;
+                const monthIndex = Number(isoCandidate.slice(5, 7)) - 1;
+                if (Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return;
+                const val = parseRainProbability(day.precipprob ?? day.rainProbability ?? day.precipProbability ?? day.precipProb ?? day.probability);
+                if (val == null) return;
+                months[monthIndex].sum += val;
+                months[monthIndex].count += 1;
+            });
+            const averages = months.map(m => (m.count > 0 ? Math.round(m.sum / m.count) : null));
+            if (averages.every(v => v == null || Number.isNaN(v))) return;
+            rainDataset.data = averages;
+            rainDataset.spanGaps = true;
+            statsChart.options.scales.y2.display = true;
+            statsChart.update();
+        };
+
     // Tenta estatísticas diárias vindas do banco
         const dbStats = await fetchDailyStats(start, end);
         if (Array.isArray(dbStats) && dbStats.length > 0) {
@@ -1508,10 +1536,10 @@ export function init(appStore, bootstrapOverride) {
         const ctx = statsChartEl.getContext('2d');
             const datasets = [
                 { label: 'Veículos lavados', data: counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
-                { label: 'Faturamento (R$)', data: revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1' }
+                { label: 'Faturamento (R$)', data: revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1', spanGaps: true }
             ];
             if (Array.isArray(rainPercent)) {
-                datasets.push({ label: '% Chuva', data: rainPercent, type: 'line', borderColor: 'rgba(59,130,246,0.9)', backgroundColor: 'rgba(59,130,246,0.2)', yAxisID: 'y2' });
+                datasets.push({ label: '% Chuva', data: rainPercent, type: 'line', borderColor: 'rgba(59,130,246,0.9)', backgroundColor: 'rgba(59,130,246,0.2)', yAxisID: 'y2', spanGaps: true, tension: 0.3 });
             }
             statsChart = new Chart(ctx, {
             type: 'bar',
@@ -1663,6 +1691,7 @@ export function init(appStore, bootstrapOverride) {
         }
 
     updateHomeWeatherDates(weather, refDate);
+    maybeFillAnnualRainFromWeather(weather);
 
     // Calcula e exibe a distribuição percentual das condições climáticas na visão de estatísticas
         try {
