@@ -1241,11 +1241,52 @@ export function init(appStore, bootstrapOverride) {
             if (startDate) url.searchParams.set('start', startDate);
             if (endDate) url.searchParams.set('end', endDate);
             const res = await fetch(url.toString());
-            if (!res.ok) return null;
+            if (!res.ok) {
+                if (typeof window !== 'undefined') {
+                    window.__lastWeatherFetch = {
+                        transport: 'visual-crossing',
+                        ok: false,
+                        status: res.status,
+                        url: url.toString(),
+                        lat,
+                        lon,
+                        startDate,
+                        endDate
+                    };
+                }
+                return null;
+            }
             const payload = await res.json();
             if (payload && !Array.isArray(payload.alerts)) payload.alerts = [];
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'visual-crossing',
+                    ok: true,
+                    status: res.status,
+                    url: url.toString(),
+                    lat,
+                    lon,
+                    startDate,
+                    endDate,
+                    days: Array.isArray(payload?.days) ? payload.days.length : null
+                };
+            }
             return payload;
-        } catch (e) { console.warn('visual weather fetch failed', e); return null; }
+        } catch (e) {
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'visual-crossing',
+                    ok: false,
+                    error: e instanceof Error ? e.message : String(e),
+                    lat,
+                    lon,
+                    startDate,
+                    endDate
+                };
+            }
+            console.warn('visual weather fetch failed', e);
+            return null;
+        }
     }
 
     // --- Weather client-side cache (localStorage) ---
@@ -1264,6 +1305,18 @@ export function init(appStore, bootstrapOverride) {
         if (cache[key] && (now - (cache[key].ts || 0) < WEATHER_CACHE_TTL)) {
             const cachedEntry = cache[key].data || null;
             if (cachedEntry && !Array.isArray(cachedEntry.alerts)) cachedEntry.alerts = [];
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'two-day-cache',
+                    ok: true,
+                    cached: true,
+                    lat,
+                    lon,
+                    startDate: start,
+                    endDate: tomorrow,
+                    days: Array.isArray(cachedEntry?.days) ? cachedEntry.days.length : null
+                };
+            }
             return cachedEntry;
         }
     // Tenta primeiro o proxy do Visual Crossing
@@ -1273,6 +1326,18 @@ export function init(appStore, bootstrapOverride) {
             if (vc && vc.days) {
                 data = vc;
                 if (data && !Array.isArray(data.alerts)) data.alerts = [];
+                if (typeof window !== 'undefined') {
+                    window.__lastWeatherFetch = {
+                        transport: 'visual-crossing',
+                        ok: true,
+                        cached: false,
+                        lat,
+                        lon,
+                        startDate: start,
+                        endDate: tomorrow,
+                        days: Array.isArray(data?.days) ? data.days.length : null
+                    };
+                }
             }
         } catch (e) { /* ignore */ }
         if (!data) {
@@ -1294,6 +1359,18 @@ export function init(appStore, bootstrapOverride) {
                     })),
                     alerts: []
                 };
+                if (typeof window !== 'undefined') {
+                    window.__lastWeatherFetch = {
+                        transport: 'open-meteo',
+                        ok: true,
+                        cached: false,
+                        lat,
+                        lon,
+                        startDate: start,
+                        endDate: tomorrow,
+                        days: om.length
+                    };
+                }
             }
         }
         if (data && !Array.isArray(data.alerts)) data.alerts = [];
@@ -1367,7 +1444,21 @@ export function init(appStore, bootstrapOverride) {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
         try {
             const res = await fetch(url);
-            if (!res.ok) return null;
+            if (!res.ok) {
+                if (typeof window !== 'undefined') {
+                    window.__lastWeatherFetch = {
+                        transport: 'open-meteo',
+                        ok: false,
+                        status: res.status,
+                        url,
+                        lat,
+                        lon,
+                        startDate,
+                        endDate
+                    };
+                }
+                return null;
+            }
             const j = await res.json();
             // Converte códigos meteorológicos em rótulos e ícones simples
             const codeToLabelAndIcon = (c) => {
@@ -1385,8 +1476,34 @@ export function init(appStore, bootstrapOverride) {
             const appMax = (j.daily && j.daily.apparent_temperature_max) || [];
             const appMin = (j.daily && j.daily.apparent_temperature_min) || [];
             const precipProb = (j.daily && j.daily.precipitation_probability_mean) || [];
-            return days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null, feelslikemax: appMax[i] ?? null, feelslikemin: appMin[i] ?? null, precipprob: precipProb[i] ?? null }));
+            const mapped = days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null, feelslikemax: appMax[i] ?? null, feelslikemin: appMin[i] ?? null, precipprob: precipProb[i] ?? null }));
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'open-meteo',
+                    ok: true,
+                    status: res.status,
+                    url,
+                    lat,
+                    lon,
+                    startDate,
+                    endDate,
+                    days: mapped.length
+                };
+            }
+            return mapped;
         } catch (e) {
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'open-meteo',
+                    ok: false,
+                    error: e instanceof Error ? e.message : String(e),
+                    url,
+                    lat,
+                    lon,
+                    startDate,
+                    endDate
+                };
+            }
             return null;
         }
     }
@@ -1736,7 +1853,17 @@ export function init(appStore, bootstrapOverride) {
             if (!stripEl) return;
             stripEl.innerHTML = '';
             stripEl.classList.add('d-none');
-            if (!Array.isArray(days) || days.length === 0) return;
+            if (!Array.isArray(days) || days.length === 0) {
+                if (typeof window !== 'undefined') {
+                    window.__lastWeatherStrip = {
+                        state: 'empty',
+                        range,
+                        highlight: (highlightISO || '').toString().slice(0, 10),
+                        days: Array.isArray(days) ? days.length : null
+                    };
+                }
+                return;
+            }
 
             const normalizedHighlight = (highlightISO || '').toString().slice(0, 10);
             const maxVisible = (() => {
@@ -1782,6 +1909,16 @@ export function init(appStore, bootstrapOverride) {
             stripEl.setAttribute('role', 'list');
             stripEl.appendChild(fragment);
             stripEl.classList.remove('d-none');
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherStrip = {
+                    state: 'rendered',
+                    range,
+                    highlight: normalizedHighlight,
+                    days: days.length,
+                    rendered: maxVisible,
+                    sample: days[0] || null
+                };
+            }
         };
 
         try {
