@@ -23,6 +23,10 @@
   justify-content: flex-end;
 }
 
+body[data-active-role="selection"] #home-weather-layout {
+  display: none;
+}
+
 .weather-alerts {
   margin-top: 16px;
   display: flex;
