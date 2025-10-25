@@ -90,13 +90,6 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   margin-top: 50px;
 }
 
-/* Esconde widgets de clima quando nenhum perfil está selecionado */
-body[data-active-role="selection"] #home-weather,
-body[data-active-role="selection"] #home-weather-layout,
-body[data-active-role="selection"] #home-weather-legend {
-  display: none !important;
-}
-
 /* Cards de clima na home */
 #home-weather-layout { align-items: stretch; }
 #home-weather-cards { align-items:center; }
