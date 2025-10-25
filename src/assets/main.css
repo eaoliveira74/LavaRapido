@@ -165,7 +165,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #home-weather-layout { align-items: stretch; }
 #home-weather-cards {
   align-items: center;
-  margin-top: -200px;
+}
+
+body[data-active-role="selection"] #home-weather-layout {
+  margin-top: 200px;
 }
 
 .weather-card { min-width:140px; max-width:220px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
