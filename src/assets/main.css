@@ -167,6 +167,7 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 }
 #home-weather-legend {
   margin-top: 50px;
+  margin-left: 50px;
 }
 
 /* Cards de clima na home */
