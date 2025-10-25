@@ -1639,7 +1639,8 @@ export function init(appStore, bootstrapOverride) {
             const normalizedHighlight = (highlightISO || '').toString().slice(0, 10);
             const maxVisible = (() => {
                 if (range === 'day') return 1;
-                if (range === 'week') return 7;
+                if (range === 'week') return Math.min(days.length, 7);
+                if (range === 'month') return days.length;
                 if (range === 'year') return Math.min(days.length, 31);
                 return Math.min(days.length, 14);
             })();
