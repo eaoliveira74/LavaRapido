@@ -169,13 +169,14 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #home-weather-layout { align-items: flex-start; }
 #home-weather-cards {
   align-items: flex-start;
+  min-height: 150px;
 }
 
 body[data-active-role="selection"] #home-weather-layout {
   margin-top: 200px;
 }
 
-.weather-card { min-width:140px; max-width:220px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.weather-card { min-width:140px; max-width:220px; min-height:140px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 .weather-card .title { font-weight:600; font-size:0.9rem; }
 .weather-card .temp { font-size:1.1rem; font-weight:700; }
 .weather-card .cond { font-size:0.85rem; color:#475569; }
