@@ -9,6 +9,53 @@
     <div id="app"></div>
 
     <!-- Entrada principal da aplicação Vue -->
-    <script type="module" src="/src/main.js"></script>
+    <script type="module">
+      const isGitHubPages = window.location.hostname.endsWith('github.io');
+
+      async function bootFromBundle() {
+        const segments = window.location.pathname.split('/').filter(Boolean);
+        const basePath = segments.length ? `/${segments[0]}` : '';
+        const manifestUrl = `${basePath}/gh-pages/manifest.json`;
+
+        try {
+          const manifestResponse = await fetch(manifestUrl, { cache: 'no-cache' });
+          if (!manifestResponse.ok) {
+            throw new Error(`Manifest fetch failed with status ${manifestResponse.status}`);
+          }
+          const manifest = await manifestResponse.json();
+          const htmlEntry = manifest['index.html'];
+          if (!htmlEntry || !htmlEntry.file) {
+            throw new Error('Manifest entry for index.html not found');
+          }
+          const mainEntry = manifest['src/main.js'];
+
+          ((mainEntry && mainEntry.css) || []).forEach((cssPath) => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `${basePath}/gh-pages/${cssPath}`;
+            document.head.appendChild(link);
+          });
+
+          await import(`${basePath}/gh-pages/${htmlEntry.file}`);
+        } catch (err) {
+          console.error('Failed to load production bundle from gh-pages assets:', err);
+          const notice = document.createElement('div');
+          notice.style.padding = '1rem';
+          notice.style.margin = '1rem';
+          notice.style.border = '2px solid #ef4444';
+          notice.style.background = '#fee2e2';
+          notice.style.color = '#7f1d1d';
+          notice.style.fontFamily = 'system-ui, sans-serif';
+          notice.innerText = 'Não foi possível carregar os arquivos do aplicativo. Atualize a página ou tente novamente mais tarde.';
+          document.body.prepend(notice);
+        }
+      }
+
+      if (isGitHubPages) {
+        bootFromBundle();
+      } else {
+        import('/src/main.js');
+      }
+    </script>
   </body>
 </html>

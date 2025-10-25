@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node ./scripts/update-gh-pages-assets.mjs",
     "preview": "vite preview",
     "test:ui": "playwright test tests/ui.spec.js --project=chromium --timeout=20000",
     "test:ui:headed": "playwright test tests/ui.spec.js --project=chromium --headed --timeout=20000",
