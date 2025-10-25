@@ -23,11 +23,10 @@
             throw new Error(`Manifest fetch failed with status ${manifestResponse.status}`);
           }
           const manifest = await manifestResponse.json();
-          const htmlEntry = manifest['index.html'];
-          if (!htmlEntry || !htmlEntry.file) {
-            throw new Error('Manifest entry for index.html not found');
-          }
           const mainEntry = manifest['src/main.js'];
+          if (!mainEntry || !mainEntry.file) {
+            throw new Error('Manifest entry for src/main.js not found');
+          }
 
           ((mainEntry && mainEntry.css) || []).forEach((cssPath) => {
             const link = document.createElement('link');
@@ -36,7 +35,7 @@
             document.head.appendChild(link);
           });
 
-          await import(`${basePath}/gh-pages/${htmlEntry.file}`);
+          await import(`${basePath}/gh-pages/${mainEntry.file}`);
         } catch (err) {
           console.error('Failed to load production bundle from gh-pages assets:', err);
           const notice = document.createElement('div');
