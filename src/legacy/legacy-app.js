@@ -1073,6 +1073,13 @@ export function init(appStore, bootstrapOverride) {
         if (key.startsWith('chuv')) return ICON_RAIN;
         return '';
     };
+    const displayConditionLabel = (label) => {
+        const text = (label || '').toString();
+        if (!text) return '';
+        const lower = text.toLowerCase();
+        if (lower.startsWith('parcial')) return 'Parcial nublado';
+        return text;
+    };
 
     const normalizeConditionLabel = (raw) => {
         const text = (raw || '').toString();
@@ -1116,13 +1123,14 @@ export function init(appStore, bootstrapOverride) {
                 ? iso
                 : dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
             const conditionText = normalizeConditionLabel(day.conditionSimple || day.label || day.conditions || '');
+            const displayCondition = displayConditionLabel(conditionText);
             const iconSvg = iconSvgForCondition(conditionText);
             const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
             const entry = document.createElement('div');
             entry.className = 'weather-date-entry';
             const longDate = formatDatePtBr(iso);
             const precipDetail = (precip != null && !Number.isNaN(precip)) ? `${precip}% chuva` : '';
-            const safeCondition = conditionText || 'Condição não informada';
+            const safeCondition = displayCondition || 'Condição não informada';
             const iconMarkup = iconSvg || '<span class="date-icon-fallback" aria-hidden="true">?</span>';
             entry.innerHTML = `<div class="date-icon">${iconMarkup}</div><div class="date-label">${label}</div>${precipDetail ? `<div class="date-extra">${precipDetail}</div>` : ''}`;
             const titleParts = [longDate, safeCondition];
@@ -1233,6 +1241,7 @@ export function init(appStore, bootstrapOverride) {
                 const cond = normalizeConditionLabel(rawCondition);
                 const tmax = Math.round(day.tempmax != null ? day.tempmax : (day.temp != null ? day.temp : 0));
                 const tmin = Math.round(day.tempmin != null ? day.tempmin : (day.temp != null ? day.temp : 0));
+                const condDisplay = displayConditionLabel(cond);
                 const icon = iconSvgForCondition(cond);
                 const feelsMax = (day.feelslikemax != null) ? Math.round(day.feelslikemax) : null;
                 const feelsMin = (day.feelslikemin != null) ? Math.round(day.feelslikemin) : null;
@@ -1244,7 +1253,7 @@ export function init(appStore, bootstrapOverride) {
                         <div>
                             <div class="temp"><strong>Máx ${tmax}°C</strong></div>
                             <div class="temp text-secondary">Min ${tmin}°C</div>
-                            <div class="cond">${cond}${(feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : ''}${precipProb!=null ? ` · ${precipProb}% chuva` : ''}</div>
+                            <div class="cond">${condDisplay}${(feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : ''}${precipProb!=null ? ` · ${precipProb}% chuva` : ''}</div>
                         </div>
                     </div>
                 `;
@@ -1615,13 +1624,14 @@ export function init(appStore, bootstrapOverride) {
             if (!label) label = day.displayDate || day.dateStr || '-';
             const baseCondition = day.conditionSimple || day.label || day.conditions || '';
             const condition = normalizeConditionLabel(baseCondition);
-            const iconSvg = iconSvgForCondition(condition);
+                    const conditionDisplay = displayConditionLabel(condition);
+                    const iconSvg = iconSvgForCondition(condition);
             const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
             const tooltipDetail = (day.conditions || baseCondition || condition || '').toString();
             const dayDiv = document.createElement('div');
             dayDiv.className = 'day-icon';
             dayDiv.setAttribute('role', 'img');
-            dayDiv.setAttribute('aria-label', `${label}: ${condition}`);
+            dayDiv.setAttribute('aria-label', `${label}: ${conditionDisplay}`);
             const precipTxt = (precip != null && !Number.isNaN(precip)) ? ` (${precip}% precip)` : '';
             dayDiv.title = `${label}: ${tooltipDetail || condition}${precipTxt}`;
             const labelMarkup = includeLabel ? `<div class="label">${label}</div>` : '';
@@ -1653,6 +1663,7 @@ export function init(appStore, bootstrapOverride) {
                 const iso = isoCandidate.slice(0, 10);
                 const displayDate = formatDatePtBr(iso) || iso;
                 const condition = normalizeConditionLabel(day.conditionSimple || day.label || day.conditions || '');
+                const conditionDisplay = displayConditionLabel(condition);
                 const iconSvg = iconSvgForCondition(condition);
                 const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
 
@@ -1661,7 +1672,7 @@ export function init(appStore, bootstrapOverride) {
                 card.innerHTML = `
                     <div class="weather-strip-icon">${iconSvg || '<span class="date-icon-fallback" aria-hidden="true">?</span>'}</div>
                     <div class="weather-strip-date">${displayDate}</div>
-                    <div class="weather-strip-condition">${condition}</div>
+                    <div class="weather-strip-condition">${conditionDisplay}</div>
                     ${precip != null && !Number.isNaN(precip) ? `<div class="weather-strip-precip">${precip}% chuva</div>` : ''}
                 `;
                 const tooltipParts = [displayDate, condition];
@@ -1787,6 +1798,7 @@ export function init(appStore, bootstrapOverride) {
                 if (today) {
                     const todayCondition = normalizeConditionLabel(today.conditionSimple || today.label || today.conditions || '');
                     const iconSvg = iconSvgForCondition(todayCondition);
+                    const todayDisplay = displayConditionLabel(todayCondition);
                     const tmax = Math.round(today.tempmax != null ? today.tempmax : (today.temp != null ? today.temp : 0));
                     const tmin = Math.round(today.tempmin != null ? today.tempmin : (today.temp != null ? today.temp : 0));
                     const feelsMax = (today.feelslikemax != null) ? Math.round(today.feelslikemax) : null;
@@ -1794,7 +1806,7 @@ export function init(appStore, bootstrapOverride) {
                     const precipProb = (today.precipprob != null) ? Math.round(today.precipprob) : null;
                     const feelsTxt = (feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : '';
                     const precipTxt = precipProb!=null ? ` · ${precipProb}% chuva` : '';
-                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${todayCondition}</strong> — Máx ${tmax}°C · Min ${tmin}°C${feelsTxt}${precipTxt}`;
+                    homeEl.innerHTML = `${iconSvg} <strong style="vertical-align:middle;">${todayDisplay}</strong> — Máx ${tmax}°C · Min ${tmin}°C${feelsTxt}${precipTxt}`;
                 }
             }
         } catch (e) { /* ignore */ }
