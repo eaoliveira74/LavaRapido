@@ -75,6 +75,7 @@ export function init(appStore, bootstrapOverride) {
     const logoutSlotClient = document.getElementById('logout-slot-client');
     const adminActionButtons = document.getElementById('admin-action-buttons');
   const announcementContainer = document.getElementById('announcement-container');
+    const homeWeatherLayout = document.getElementById('home-weather-layout');
   
   // Elementos da visão do cliente
   const datePicker = document.getElementById('date-picker');
@@ -295,6 +296,10 @@ export function init(appStore, bootstrapOverride) {
     const switchView = (role) => {
         if (store && typeof store.setRole === 'function') {
             store.setRole(role || 'selection');
+        }
+        const showHomeWeather = role === 'client' || role === 'admin';
+        if (homeWeatherLayout) {
+            homeWeatherLayout.classList.toggle('d-none', !showHomeWeather);
         }
     roleSelectionView.classList.add('d-none');
     clientView.classList.add('d-none');
