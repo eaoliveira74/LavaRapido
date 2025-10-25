@@ -159,7 +159,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 
 /* Cards de clima na home */
 #home-weather-layout { align-items: stretch; }
-#home-weather-cards { align-items:center; }
+#home-weather-cards {
+  align-items: center;
+  margin-top: -200px;
+}
 
 .weather-card { min-width:140px; max-width:220px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 .weather-card .title { font-weight:600; font-size:0.9rem; }
@@ -509,7 +512,7 @@ body[data-active-role="admin"] .weather-dates-grid {
   /* Empilha o conteúdo do cabeçalho */
   header .container { flex-direction: column; align-items: flex-start; }
   #home-weather { margin-top: 6px; }
-  #home-weather-cards { width: 100%; flex-wrap: wrap; gap: 8px; }
+  #home-weather-cards { width: 100%; flex-wrap: wrap; gap: 8px; margin-top: 0; }
   .weather-card { min-width: 0; flex: 1 1 calc(50% - 8px); }
   .weather-card .temp { font-size: 1rem; }
   .weather-card .cond { font-size: 0.8rem; }
