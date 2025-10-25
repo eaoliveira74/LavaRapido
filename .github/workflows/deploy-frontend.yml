@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
       - name: Build Vite site
         env:
           # Defina a URL pública do backend (Railway) como secret BACKEND_URL do repositório
