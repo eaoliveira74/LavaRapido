@@ -184,10 +184,16 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 
 .weather-dates-grid {
   display: grid;
+  grid-template-columns: repeat(6, minmax(64px, 1fr));
+  gap: var(--weather-gap);
+  min-width: 260px;
+  max-width: 420px;
+}
+
+body[data-active-role="admin"] .weather-dates-grid {
   grid-template-columns: repeat(10, minmax(72px, 1fr));
   grid-auto-rows: var(--weather-row-height);
   grid-auto-flow: row;
-  gap: var(--weather-gap);
   min-width: 0;
   max-width: 100%;
 }
@@ -240,10 +246,12 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 }
 
 @media (max-width: 1200px) {
-  .weather-dates-grid { grid-template-columns: repeat(6, minmax(72px, 1fr)); }
+  .weather-dates-grid { max-width: 360px; }
+  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(6, minmax(72px, 1fr)); }
 }
 @media (max-width: 992px) {
-  .weather-dates-grid { grid-template-columns: repeat(5, minmax(72px, 1fr)); }
+  .weather-dates-grid { min-width: 0; max-width: none; }
+  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(5, minmax(72px, 1fr)); }
 }
 @media (max-width: 768px) {
   .weather-dates-wrapper {
@@ -260,9 +268,11 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 }
 @media (max-width: 680px) {
   .weather-dates-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
+  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
 }
 @media (max-width: 540px) {
   .weather-dates-grid { grid-template-columns: repeat(2, minmax(96px, 1fr)); }
+  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(2, minmax(96px, 1fr)); }
 }
 @media (max-width: 400px) {
   .weather-dates-grid { grid-template-columns: repeat(1, minmax(120px, 1fr)); }
