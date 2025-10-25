@@ -25,21 +25,21 @@
 
     <!-- Cabeçalho da Aplicação -->
     <header class="py-4 shadow-sm">
-      <div class="container d-flex justify-content-between align-items-center flex-wrap">
-        <div>
+      <div class="container app-header">
+        <div class="app-header-left">
           <h1 class="h3 fw-bold" style="color: #ffffff;">Sistema de Agendamento - Lava Rápido Versátil</h1>
           <p class="mb-0" style="color: #ffffff;">Gerencie seus agendamentos de forma simples e eficiente.</p>
           <div id="home-weather" class="small text-white mt-1" aria-live="polite"></div>
-          <!-- Cards de previsão: Hoje / Amanhã -->
-          <div id="home-weather-layout" class="d-flex flex-wrap align-items-start gap-3 mt-2">
-            <div id="home-weather-cards" class="d-flex gap-2 flex-wrap">
-              <div id="weather-card-today" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
-              <div id="weather-card-tomorrow" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
-            </div>
-            <div class="weather-dates-wrapper">
-              <div id="home-weather-dates" class="weather-dates-grid" aria-live="polite"></div>
-              <div id="home-weather-legend" class="weather-legend small text-secondary" aria-live="polite"></div>
-            </div>
+        </div>
+        <!-- Cards de previsão: Hoje / Amanhã -->
+        <div id="home-weather-layout" class="d-flex flex-wrap align-items-start gap-3 mt-2">
+          <div id="home-weather-cards" class="d-flex gap-2 flex-wrap">
+            <div id="weather-card-today" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
+            <div id="weather-card-tomorrow" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
+          </div>
+          <div class="weather-dates-wrapper">
+            <div id="home-weather-dates" class="weather-dates-grid" aria-live="polite"></div>
+            <div id="home-weather-legend" class="weather-legend small text-secondary" aria-live="polite"></div>
           </div>
         </div>
       </div>
