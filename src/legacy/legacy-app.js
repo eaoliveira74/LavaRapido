@@ -932,6 +932,29 @@ export function init(appStore, bootstrapOverride) {
     let statsUpdateQueue = Promise.resolve();
     let statsChart = null;
 
+    const parseRainProbability = (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'number') {
+            if (!Number.isFinite(value)) return null;
+            return Math.max(0, Math.min(100, Math.round(value)));
+        }
+        if (typeof value === 'string') {
+            const match = value.match(/-?\d+(?:[.,]\d+)?/);
+            if (!match) return null;
+            const normalized = Number(match[0].replace(',', '.'));
+            if (!Number.isFinite(normalized)) return null;
+            return Math.max(0, Math.min(100, Math.round(normalized)));
+        }
+        if (typeof value === 'object') {
+            try {
+                if (value && 'value' in value) return parseRainProbability(value.value);
+            } catch (_) {
+                return null;
+            }
+        }
+        return null;
+    };
+
     // Garante que a data padrão esteja ajustada
     if (statsDate) statsDate.value = getTodayString();
 
@@ -1392,10 +1415,10 @@ export function init(appStore, bootstrapOverride) {
                 if (!bucket) return;
                 const countVal = Number(data?.count);
                 const revenueVal = Number(data?.revenue);
-                const rainVal = Number(data?.rain);
+                const rainVal = parseRainProbability(data?.rain);
                 if (Number.isFinite(countVal)) bucket.count += countVal;
                 if (Number.isFinite(revenueVal)) bucket.revenue += revenueVal;
-                if (Number.isFinite(rainVal)) {
+                if (rainVal != null) {
                     bucket.rainSum += rainVal;
                     bucket.rainCount += 1;
                 }
@@ -1419,7 +1442,7 @@ export function init(appStore, bootstrapOverride) {
                     label: formatDatePtBr(iso),
                     count: Number(r.carsWashed || 0),
                     revenue: Number(r.totalRevenue || 0),
-                    rain: (r.rainProbability == null) ? null : Math.round(Number(r.rainProbability))
+                    rain: parseRainProbability(r.rainProbability)
                 });
             });
             aggregatedByDate.forEach((agg, iso) => {
@@ -1445,7 +1468,8 @@ export function init(appStore, bootstrapOverride) {
                     labels.push(data.label);
                     counts.push(data.count);
                     revenue.push(data.revenue);
-                    if (data.rain != null) { rainValues.push(data.rain); hasRain = true; } else { rainValues.push(null); }
+                    const rainValue = parseRainProbability(data.rain);
+                    if (rainValue != null) { rainValues.push(rainValue); hasRain = true; } else { rainValues.push(null); }
                 });
                 rainPercent = hasRain ? rainValues : null;
             }
