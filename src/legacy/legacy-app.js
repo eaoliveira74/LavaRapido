@@ -1455,8 +1455,13 @@ export function init(appStore, bootstrapOverride) {
             if (averages.every(v => v == null || Number.isNaN(v))) return;
             rainDataset.data = averages;
             rainDataset.spanGaps = true;
-            statsChart.options.scales.y2.display = true;
-            statsChart.update();
+            const y2 = statsChart.options && statsChart.options.scales ? statsChart.options.scales.y2 : null;
+            if (y2) y2.display = true;
+            try {
+                statsChart.update();
+            } catch (err) {
+                console.warn('Falha ao atualizar gráfico anual com dados de chuva', err);
+            }
         };
 
     // Tenta estatísticas diárias vindas do banco
