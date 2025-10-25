@@ -15,7 +15,7 @@
       async function bootFromBundle() {
         const segments = window.location.pathname.split('/').filter(Boolean);
         const basePath = segments.length ? `/${segments[0]}` : '';
-        const manifestUrl = `${basePath}/gh-pages/manifest.json`;
+  const manifestUrl = `${basePath}/manifest.json`;
 
         try {
           const manifestResponse = await fetch(manifestUrl, { cache: 'no-cache' });
@@ -31,11 +31,11 @@
           ((mainEntry && mainEntry.css) || []).forEach((cssPath) => {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = `${basePath}/gh-pages/${cssPath}`;
+            link.href = `${basePath}/${cssPath}`;
             document.head.appendChild(link);
           });
 
-          await import(`${basePath}/gh-pages/${mainEntry.file}`);
+          await import(`${basePath}/${mainEntry.file}`);
         } catch (err) {
           console.error('Failed to load production bundle from gh-pages assets:', err);
           const notice = document.createElement('div');
