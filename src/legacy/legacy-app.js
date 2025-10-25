@@ -1539,13 +1539,13 @@ export function init(appStore, bootstrapOverride) {
 
     // Prepara datasets de quantidade e faturamento
         const ctx = statsChartEl.getContext('2d');
+        const rainData = Array.isArray(rainPercent) ? rainPercent : Array.from({ length: labels.length }, () => null);
+        const hasRainData = rainData.some((value) => value != null && !Number.isNaN(value));
             const datasets = [
                 { label: 'Veículos lavados', data: counts, backgroundColor: 'rgba(6,182,212,0.7)', yAxisID: 'y' },
-                { label: 'Faturamento (R$)', data: revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1', spanGaps: true }
+                { label: 'Faturamento (R$)', data: revenue, type: 'line', borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'rgba(16,185,129,0.3)', yAxisID: 'y1', spanGaps: true },
+                { label: '% Chuva', data: rainData, type: 'line', borderColor: 'rgba(59,130,246,0.9)', backgroundColor: 'rgba(59,130,246,0.2)', yAxisID: 'y2', spanGaps: true, tension: 0.3 }
             ];
-            if (Array.isArray(rainPercent)) {
-                datasets.push({ label: '% Chuva', data: rainPercent, type: 'line', borderColor: 'rgba(59,130,246,0.9)', backgroundColor: 'rgba(59,130,246,0.2)', yAxisID: 'y2', spanGaps: true, tension: 0.3 });
-            }
             statsChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -1564,7 +1564,7 @@ export function init(appStore, bootstrapOverride) {
                         x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
                         y: { type: 'linear', position: 'left', title: { display: true, text: 'Veículos' } },
                         y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'R$' } },
-                        y2: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, min: 0, max: 100, ticks: { callback: (v)=>`${v}%` }, title: { display: true, text: '% Chuva' }, display: Array.isArray(rainPercent) }
+                        y2: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, min: 0, max: 100, ticks: { callback: (v)=>`${v}%` }, title: { display: true, text: '% Chuva' }, display: hasRainData }
                     }
                 }
         });
