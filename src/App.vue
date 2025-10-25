@@ -202,7 +202,6 @@
               <div class="mb-2">
                 <canvas id="stats-chart"></canvas>
               </div>
-              <div id="stats-weather-strip" class="d-flex gap-2 align-items-center mt-2" aria-live="polite"></div>
               <div id="stats-weather" class="small text-secondary"></div>
             </div>
           </div>
