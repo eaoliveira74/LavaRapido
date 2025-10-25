@@ -32,7 +32,7 @@
           <div id="home-weather" class="small text-white mt-1" aria-live="polite"></div>
         </div>
         <!-- Cards de previsão: Hoje / Amanhã -->
-        <div id="home-weather-layout" class="d-flex flex-wrap align-items-start gap-3 mt-2">
+  <div id="home-weather-layout" class="d-flex flex-wrap align-items-start gap-3">
           <div id="home-weather-cards" class="d-flex gap-2 flex-wrap">
             <div id="weather-card-today" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
             <div id="weather-card-tomorrow" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
