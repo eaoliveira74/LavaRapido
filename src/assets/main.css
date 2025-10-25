@@ -166,9 +166,9 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 }
 
 /* Cards de clima na home */
-#home-weather-layout { align-items: stretch; }
+#home-weather-layout { align-items: flex-start; }
 #home-weather-cards {
-  align-items: center;
+  align-items: flex-start;
 }
 
 body[data-active-role="selection"] #home-weather-layout {
