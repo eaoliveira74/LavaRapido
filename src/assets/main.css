@@ -205,6 +205,17 @@ body[data-active-role="admin"] .weather-dates-grid {
   max-width: 100%;
   margin-top: 0;
 }
+
+body[data-active-role="client"] .weather-dates-grid {
+  grid-template-columns: repeat(10, minmax(64px, 1fr));
+  grid-template-rows: repeat(3, var(--weather-row-height));
+  grid-auto-rows: var(--weather-row-height);
+  grid-auto-flow: row;
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(var(--weather-row-height) * 3 + var(--weather-gap) * 2);
+  overflow-y: auto;
+}
 .weather-dates-grid:empty { display: none; }
 .weather-date-entry {
   background: rgba(15, 23, 42, 0.75);
@@ -255,11 +266,13 @@ body[data-active-role="admin"] .weather-dates-grid {
 
 @media (max-width: 1200px) {
   .weather-dates-grid { max-width: 360px; }
-  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(6, minmax(72px, 1fr)); }
+  body[data-active-role="admin"] .weather-dates-grid,
+  body[data-active-role="client"] .weather-dates-grid { grid-template-columns: repeat(6, minmax(72px, 1fr)); }
 }
 @media (max-width: 992px) {
   .weather-dates-grid { min-width: 0; max-width: none; }
-  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(5, minmax(72px, 1fr)); }
+  body[data-active-role="admin"] .weather-dates-grid,
+  body[data-active-role="client"] .weather-dates-grid { grid-template-columns: repeat(5, minmax(72px, 1fr)); }
 }
 @media (max-width: 768px) {
   .weather-dates-wrapper {
@@ -276,11 +289,13 @@ body[data-active-role="admin"] .weather-dates-grid {
 }
 @media (max-width: 680px) {
   .weather-dates-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
-  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
+  body[data-active-role="admin"] .weather-dates-grid,
+  body[data-active-role="client"] .weather-dates-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
 }
 @media (max-width: 540px) {
   .weather-dates-grid { grid-template-columns: repeat(2, minmax(96px, 1fr)); }
-  body[data-active-role="admin"] .weather-dates-grid { grid-template-columns: repeat(2, minmax(96px, 1fr)); }
+  body[data-active-role="admin"] .weather-dates-grid,
+  body[data-active-role="client"] .weather-dates-grid { grid-template-columns: repeat(2, minmax(96px, 1fr)); }
 }
 @media (max-width: 400px) {
   .weather-dates-grid { grid-template-columns: repeat(1, minmax(120px, 1fr)); }
