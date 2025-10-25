@@ -67,10 +67,55 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 #a11y-toggle:focus { outline: 3px solid #ffdd57; }
 
 /* Ícones da faixa de clima */
-#stats-weather-strip .day-icon { display:flex; flex-direction:column; align-items:center; justify-content:center; width:48px; }
-#stats-weather-strip .day-icon .label { font-size:0.7rem; color:#cbd5e1; margin-top:2px; text-align:center; }
-#stats-weather-strip.two-row-grid { display:grid !important; grid-auto-flow:column; grid-template-rows:repeat(2, auto); align-items:flex-start !important; justify-content:flex-start; column-gap:0.75rem; row-gap:0.5rem; }
-#stats-weather-strip.two-row-grid .day-icon { width:56px; }
+#stats-weather-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+#stats-weather-strip .weather-strip-entry {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.35);
+}
+#stats-weather-strip .weather-strip-entry .weather-strip-icon {
+  display: flex;
+  justify-content: center;
+}
+#stats-weather-strip .weather-strip-entry svg {
+  width: 24px;
+  height: 24px;
+}
+#stats-weather-strip .weather-strip-entry .weather-strip-date {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+#stats-weather-strip .weather-strip-entry .weather-strip-condition {
+  text-align: center;
+  color: #cbd5e1;
+}
+#stats-weather-strip .weather-strip-entry .weather-strip-precip {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+#stats-weather-strip .weather-strip-entry.is-selected-date {
+  background: #0f766e;
+  border-color: rgba(45, 212, 191, 0.85);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.45);
+}
+#stats-weather-strip .weather-strip-entry.is-selected-date .weather-strip-condition,
+#stats-weather-strip .weather-strip-entry.is-selected-date .weather-strip-precip {
+  color: #ecfdf5;
+}
 
 .weather-legend {
   display: flex;

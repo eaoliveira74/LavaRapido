@@ -1629,11 +1629,55 @@ export function init(appStore, bootstrapOverride) {
             return dayDiv;
         };
 
-        const populateWeatherStrip = (days) => {
+        const populateWeatherStrip = (days, range, highlightISO = null) => {
             const stripEl = document.getElementById('stats-weather-strip');
             if (!stripEl) return;
             stripEl.innerHTML = '';
             stripEl.classList.add('d-none');
+            if (!Array.isArray(days) || days.length === 0) return;
+
+            const normalizedHighlight = (highlightISO || '').toString().slice(0, 10);
+            const maxVisible = (() => {
+                if (range === 'day') return 1;
+                if (range === 'week') return 7;
+                if (range === 'year') return Math.min(days.length, 31);
+                return Math.min(days.length, 14);
+            })();
+
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < maxVisible; i += 1) {
+                const day = days[i];
+                if (!day) continue;
+                const isoCandidate = (day.date || day.datetime || day.dateStr || '').toString();
+                const iso = isoCandidate.slice(0, 10);
+                const displayDate = formatDatePtBr(iso) || iso;
+                const condition = normalizeConditionLabel(day.conditionSimple || day.label || day.conditions || '');
+                const iconSvg = iconSvgForCondition(condition);
+                const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
+
+                const card = document.createElement('div');
+                card.className = 'weather-strip-entry';
+                card.innerHTML = `
+                    <div class="weather-strip-icon">${iconSvg || '<span class="date-icon-fallback" aria-hidden="true">?</span>'}</div>
+                    <div class="weather-strip-date">${displayDate}</div>
+                    <div class="weather-strip-condition">${condition}</div>
+                    ${precip != null && !Number.isNaN(precip) ? `<div class="weather-strip-precip">${precip}% chuva</div>` : ''}
+                `;
+                const tooltipParts = [displayDate, condition];
+                if (precip != null && !Number.isNaN(precip)) tooltipParts.push(`${precip}% chance de chuva`);
+                card.title = tooltipParts.filter(Boolean).join(' · ');
+                card.setAttribute('role', 'listitem');
+                card.setAttribute('aria-label', card.title);
+                if (normalizedHighlight && iso && iso === normalizedHighlight) {
+                    card.classList.add('is-selected-date');
+                    card.setAttribute('aria-current', 'date');
+                }
+                fragment.appendChild(card);
+            }
+
+            stripEl.setAttribute('role', 'list');
+            stripEl.appendChild(fragment);
+            stripEl.classList.remove('d-none');
         };
 
         try {
@@ -1644,7 +1688,7 @@ export function init(appStore, bootstrapOverride) {
                 const legendEl = document.getElementById('home-weather-legend');
                 const infoEl = document.getElementById('stats-weather');
                 if (legendEl) legendEl.innerHTML = '';
-                populateWeatherStrip(vc.days);
+                populateWeatherStrip(vc.days, range, refDate);
 
                 // Preenche a legenda
                 if (legendEl) {
@@ -1671,7 +1715,7 @@ export function init(appStore, bootstrapOverride) {
                 const infoEl = document.getElementById('stats-weather');
                 if (legendEl) legendEl.innerHTML = '';
 
-                populateWeatherStrip(days);
+                populateWeatherStrip(days, range, refDate);
 
                 if (days && days.length) {
                     // Legenda
