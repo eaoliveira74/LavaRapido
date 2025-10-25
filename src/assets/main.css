@@ -184,10 +184,12 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 
 .weather-dates-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(64px, 1fr));
+  grid-template-columns: repeat(10, minmax(72px, 1fr));
+  grid-auto-rows: var(--weather-row-height);
+  grid-auto-flow: row;
   gap: var(--weather-gap);
-  min-width: 260px;
-  max-width: 420px;
+  min-width: 0;
+  max-width: 100%;
 }
 .weather-dates-grid:empty { display: none; }
 .weather-date-entry {
@@ -238,10 +240,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 }
 
 @media (max-width: 1200px) {
-  .weather-dates-grid { max-width: 360px; }
+  .weather-dates-grid { grid-template-columns: repeat(6, minmax(72px, 1fr)); }
 }
 @media (max-width: 992px) {
-  .weather-dates-grid { min-width: 0; max-width: none; }
+  .weather-dates-grid { grid-template-columns: repeat(5, minmax(72px, 1fr)); }
 }
 @media (max-width: 768px) {
   .weather-dates-wrapper {
@@ -255,9 +257,6 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
     gap: 10px;
     align-items: center;
   }
-}
-@media (max-width: 900px) {
-  .weather-dates-grid { grid-template-columns: repeat(4, minmax(72px, 1fr)); }
 }
 @media (max-width: 680px) {
   .weather-dates-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
