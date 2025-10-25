@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 
     const startPath = start ? `/${start}` : '';
     const endPath = end ? `/${end}` : '';
-    const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}${startPath}${endPath}?unitGroup=metric&include=days&elements=datetime,conditions,temp,tempmax,tempmin,precip,precipprob&key=${encodeURIComponent(KEY)}&contentType=json`;
+  const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}${startPath}${endPath}?unitGroup=metric&include=days,alerts&elements=datetime,conditions,temp,tempmax,tempmin,precip,precipprob&key=${encodeURIComponent(KEY)}&contentType=json`;
 
     const r = await fetch(url);
     if (!r.ok) {
@@ -43,7 +43,17 @@ router.get('/', async (req, res) => {
     }
     const j = await r.json();
   const days = (j.days || []).map(d => ({ date: d.datetime, conditions: d.conditions || '', precipprob: d.precipprob, conditionSimple: normalizeCondition(d.conditions, d.precipprob), temp: d.temp, tempmax: d.tempmax, tempmin: d.tempmin, precip: d.precip }));
-    const out = { lat: j.latitude || parseFloat(lat), lon: j.longitude || parseFloat(lon), days };
+    const alerts = (j.alerts || []).map((alert) => ({
+      event: alert.event || '',
+      headline: alert.headline || '',
+      description: alert.description || alert.detail || '',
+      severity: alert.severity || alert.level || '',
+      onset: alert.onset || alert.starts || alert.start || null,
+      expires: alert.expires || alert.ends || alert.end || null,
+      regions: alert.regions || [],
+      link: alert.link || alert.alerturl || ''
+    }));
+    const out = { lat: j.latitude || parseFloat(lat), lon: j.longitude || parseFloat(lon), days, alerts };
     cache.set(key, { ts: now, data: out });
     res.json(out);
   } catch (e) {

@@ -1081,6 +1081,85 @@ export function init(appStore, bootstrapOverride) {
         return text;
     };
 
+    const formatAlertDateTime = (iso) => {
+        if (!iso) return '';
+        const dt = new Date(iso);
+        if (Number.isNaN(dt.getTime())) return '';
+        return dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const renderHomeWeatherAlerts = (alerts) => {
+        const container = document.getElementById('home-weather-alerts');
+        if (!container) return;
+        container.innerHTML = '';
+        container.classList.add('d-none');
+        if (!Array.isArray(alerts) || alerts.length === 0) {
+            container.removeAttribute('data-alert-count');
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        const maxAlerts = Math.min(alerts.length, 3);
+        for (let i = 0; i < maxAlerts; i += 1) {
+            const alert = alerts[i] || {};
+            const banner = document.createElement('div');
+            banner.className = 'weather-alert-banner';
+
+            const titleRow = document.createElement('div');
+            titleRow.className = 'weather-alert-title';
+            const iconSpan = document.createElement('span');
+            iconSpan.setAttribute('aria-hidden', 'true');
+            iconSpan.textContent = '⚠️';
+            const headlineSpan = document.createElement('span');
+            headlineSpan.textContent = (alert.headline || alert.event || 'Alerta meteorológico').toString();
+            titleRow.appendChild(iconSpan);
+            titleRow.appendChild(headlineSpan);
+            banner.appendChild(titleRow);
+
+            const metaParts = [];
+            if (alert.severity) metaParts.push(alert.severity.toString());
+            const expires = formatAlertDateTime(alert.expires || alert.onset || null);
+            if (expires) metaParts.push(`Válido até ${expires}`);
+            if (Array.isArray(alert.regions) && alert.regions.length) {
+                const regionsLabel = alert.regions.slice(0, 2).join(', ');
+                if (regionsLabel) metaParts.push(regionsLabel);
+            }
+            if (metaParts.length) {
+                const metaRow = document.createElement('div');
+                metaRow.className = 'weather-alert-meta';
+                metaRow.textContent = metaParts.join(' • ');
+                banner.appendChild(metaRow);
+            }
+
+            const description = (alert.description || alert.event || '').toString().trim();
+            if (description) {
+                const descRow = document.createElement('div');
+                descRow.className = 'weather-alert-description';
+                const shortened = description.length > 360 ? `${description.slice(0, 357)}…` : description;
+                descRow.textContent = shortened;
+                banner.appendChild(descRow);
+            }
+
+            if (alert.link) {
+                const actions = document.createElement('div');
+                actions.className = 'weather-alert-actions';
+                const anchor = document.createElement('a');
+                anchor.href = alert.link;
+                anchor.target = '_blank';
+                anchor.rel = 'noopener noreferrer';
+                anchor.textContent = 'Mais detalhes sobre o alerta';
+                actions.appendChild(anchor);
+                banner.appendChild(actions);
+            }
+
+            fragment.appendChild(banner);
+        }
+
+        container.appendChild(fragment);
+        container.classList.remove('d-none');
+        container.setAttribute('data-alert-count', String(maxAlerts));
+    };
+
     const normalizeConditionLabel = (raw) => {
         const text = (raw || '').toString();
         const lower = text.toLowerCase();
@@ -1163,7 +1242,9 @@ export function init(appStore, bootstrapOverride) {
             if (endDate) url.searchParams.set('end', endDate);
             const res = await fetch(url.toString());
             if (!res.ok) return null;
-            return await res.json();
+            const payload = await res.json();
+            if (payload && !Array.isArray(payload.alerts)) payload.alerts = [];
+            return payload;
         } catch (e) { console.warn('visual weather fetch failed', e); return null; }
     }
 
@@ -1180,12 +1261,19 @@ export function init(appStore, bootstrapOverride) {
         const key = `${lat.toFixed(4)},${lon.toFixed(4)},${start},${tomorrow}`;
         const cache = readWeatherCache();
         const now = Date.now();
-        if (cache[key] && (now - (cache[key].ts || 0) < WEATHER_CACHE_TTL)) return cache[key].data;
+        if (cache[key] && (now - (cache[key].ts || 0) < WEATHER_CACHE_TTL)) {
+            const cachedEntry = cache[key].data || null;
+            if (cachedEntry && !Array.isArray(cachedEntry.alerts)) cachedEntry.alerts = [];
+            return cachedEntry;
+        }
     // Tenta primeiro o proxy do Visual Crossing
         let data = null;
         try {
             const vc = await fetchVisualWeather(lat, lon, start, tomorrow);
-            if (vc && vc.days) data = vc;
+            if (vc && vc.days) {
+                data = vc;
+                if (data && !Array.isArray(data.alerts)) data.alerts = [];
+            }
         } catch (e) { /* ignore */ }
         if (!data) {
             // Se falhar, usa resumo do Open-Meteo e adapta o formato (min/máx/sensação/previsão de chuva)
@@ -1203,10 +1291,12 @@ export function init(appStore, bootstrapOverride) {
                         feelslikemax: (d.feelslikemax != null ? d.feelslikemax : null),
                         feelslikemin: (d.feelslikemin != null ? d.feelslikemin : null),
                         precipprob: (d.precipprob != null ? d.precipprob : null)
-                    }))
+                    })),
+                    alerts: []
                 };
             }
         }
+        if (data && !Array.isArray(data.alerts)) data.alerts = [];
         cache[key] = { ts: now, data };
         writeWeatherCache(cache);
         return data;
@@ -1222,6 +1312,7 @@ export function init(appStore, bootstrapOverride) {
             if (tomorrowEl) tomorrowEl.innerHTML = '<div class="title">Amanhã</div><div class="cond">Carregando...</div>';
 
             const data = await fetchTwoDayWeatherCached(lat, lon);
+            renderHomeWeatherAlerts(Array.isArray(data && data.alerts) ? data.alerts : []);
             if (!data || !data.days || data.days.length === 0) {
                 if (todayEl) todayEl.innerHTML = '<div class="title">Hoje</div><div class="cond">Indisponível</div>';
                 if (tomorrowEl) tomorrowEl.innerHTML = '<div class="title">Amanhã</div><div class="cond">Indisponível</div>';
@@ -1264,6 +1355,7 @@ export function init(appStore, bootstrapOverride) {
             renderCard(tomorrowEl, t1, 'Amanhã');
         } catch (e) {
             console.warn('Failed to render home forecast', e);
+            renderHomeWeatherAlerts([]);
         }
     }
 

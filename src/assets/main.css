@@ -19,6 +19,55 @@
   margin-top: 0;
   justify-content: flex-end;
 }
+
+.weather-alerts {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weather-alert-banner {
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(220, 38, 38, 0.9));
+  border: 1px solid rgba(248, 113, 113, 0.8);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #fef2f2;
+  box-shadow: 0 10px 30px rgba(248, 113, 113, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weather-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.weather-alert-meta {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.weather-alert-description {
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.weather-alert-actions a {
+  color: #fbcfe8;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.weather-alert-actions a:hover {
+  color: #fff;
+}
 body {
   background-color: #0f172a; /* Cor de fundo principal (slate-900) */
   color: #e2e8f0; /* Cor de texto principal (slate-200) */

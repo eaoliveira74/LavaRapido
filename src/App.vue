@@ -43,6 +43,7 @@
           </div>
         </div>
       </div>
+      <div id="home-weather-alerts" class="weather-alerts d-none" aria-live="polite" role="region"></div>
     </header>
 
     <main class="container py-4">
