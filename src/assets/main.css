@@ -173,10 +173,6 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 .weather-card .temp { font-size:1.1rem; font-weight:700; }
 .weather-card .cond { font-size:0.85rem; color:#475569; }
 .a11y-high-contrast .weather-card { background:#000 !important; color:#fff !important; }
-
-body[data-active-role="client"] #home-weather-layout .weather-card .cond {
-  display: none;
-}
 /* Controles climáticos da toolbar foram removidos */
 .weather-card .icon svg { width:36px; height:36px; }
 .day-icon svg { width:24px; height:24px; }
