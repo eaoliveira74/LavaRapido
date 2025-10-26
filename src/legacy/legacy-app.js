@@ -1191,6 +1191,14 @@ export function init(appStore, bootstrapOverride) {
         const highlightISO = (selectedISO || '').toString().slice(0, 10);
         const container = document.getElementById('home-weather-dates');
         if (!container) return;
+        const activeRole = (typeof document !== 'undefined' && document.body && document.body.dataset)
+            ? document.body.dataset.activeRole
+            : null;
+        if (activeRole === 'selection' || activeRole === 'client') {
+            container.innerHTML = '';
+            container.classList.add('d-none');
+            return;
+        }
         container.innerHTML = '';
         if (!Array.isArray(days) || days.length === 0) {
             container.classList.add('d-none');

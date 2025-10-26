@@ -166,6 +166,11 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   transform: translateX(50px);
 }
 
+body[data-active-role="selection"] .weather-dates-wrapper,
+body[data-active-role="client"] .weather-dates-wrapper {
+  display: none;
+}
+
 /* Cards de clima na home */
 #home-weather-layout { align-items: flex-start; }
 #home-weather-cards {
