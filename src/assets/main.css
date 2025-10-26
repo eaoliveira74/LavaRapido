@@ -91,6 +91,33 @@ body[data-active-role="client"] #home-weather-layout {
   text-decoration: underline;
 }
 
+.a11y-high-contrast .weather-date-entry {
+  background: #000 !important;
+  color: #fff !important;
+  border-color: #fff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.a11y-high-contrast .weather-date-entry .date-label,
+.a11y-high-contrast .weather-date-entry .date-extra,
+.a11y-high-contrast .weather-date-entry .date-icon-fallback {
+  color: #fff !important;
+}
+.a11y-high-contrast .weather-date-entry .date-icon {
+  color: #ffdd57 !important;
+}
+.a11y-high-contrast .weather-date-entry .date-icon-fallback {
+  background: #222 !important;
+  border: 1px solid #fff !important;
+}
+.a11y-high-contrast .weather-date-entry svg * {
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+.a11y-high-contrast .weather-date-entry.is-selected-date {
+  border-color: #ffdd57 !important;
+  box-shadow: 0 0 0 2px #ffdd57 !important;
+}
 .weather-alert-actions a:hover {
   color: #fff;
 }
