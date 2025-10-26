@@ -1772,6 +1772,7 @@ export function init(appStore, bootstrapOverride) {
     let counts = [];
     let revenue = [];
     let rainPercent = null; // null => dataset omitido; array => plotado
+    let labelIsos = [];
     // Primeiro calcula os limites de data como na lógica anterior
         const computeBounds = (range, refDate) => {
             if (range === 'day') return { start: refDate, end: refDate };
@@ -1840,7 +1841,7 @@ export function init(appStore, bootstrapOverride) {
         const aggregateYearToMonthlySeries = (entries) => {
             const reference = start || refDate || getTodayString();
             const year = Number(reference.slice(0, 4));
-            if (!Number.isFinite(year)) return { labels: [], counts: [], revenue: [], rainPercent: null };
+            if (!Number.isFinite(year)) return { labels: [], counts: [], revenue: [], rainPercent: null, labelIso: [] };
             const buckets = Array.from({ length: 12 }, (_, idx) => ({
                 key: `${year}-${String(idx + 1).padStart(2, '0')}`,
                 count: 0,
@@ -1869,39 +1870,79 @@ export function init(appStore, bootstrapOverride) {
             const revenue = buckets.map(b => Math.round(b.revenue * 100) / 100);
             const rainValues = buckets.map(b => (b.rainCount > 0 ? Math.round(b.rainSum / b.rainCount) : null));
             const hasRain = rainValues.some(v => v != null);
-            return { labels, counts, revenue, rainPercent: hasRain ? rainValues : null };
+            const labelIso = buckets.map(b => b.key);
+            return { labels, counts, revenue, rainPercent: hasRain ? rainValues : null, labelIso };
         };
-
-        const maybeFillAnnualRainFromWeather = (weatherDays) => {
-            if (range !== 'year') return;
+        const applyWeatherDataToChart = (weatherDays) => {
             if (!statsChart || !Array.isArray(weatherDays) || weatherDays.length === 0) return;
             const rainDataset = statsChart.data.datasets.find(ds => ds.label === '% Chuva');
             if (!rainDataset) return;
-            const dataArray = Array.isArray(rainDataset.data) ? rainDataset.data : [];
-            const needsFill = dataArray.length === 0 || dataArray.every(v => v == null || Number.isNaN(v));
-            if (!needsFill) return;
-            const referenceYear = (start || refDate || getTodayString()).slice(0, 4);
-            const months = Array.from({ length: 12 }, () => ({ sum: 0, count: 0 }));
+            const baseData = Array.isArray(rainDataset.data) ? rainDataset.data.slice() : [];
+            const enableRainAxis = () => {
+                const y2 = statsChart.options && statsChart.options.scales ? statsChart.options.scales.y2 : null;
+                if (y2) y2.display = true;
+            };
+
+            if (range === 'year') {
+                const referenceYear = (start || refDate || getTodayString()).slice(0, 4);
+                const months = Array.from({ length: 12 }, () => ({ sum: 0, count: 0 }));
+                weatherDays.forEach(day => {
+                    const isoCandidate = (day.date || day.datetime || day.dateStr || '').toString();
+                    if (!isoCandidate.startsWith(referenceYear)) return;
+                    const monthIndex = Number(isoCandidate.slice(5, 7)) - 1;
+                    if (Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return;
+                    const val = parseRainProbability(day.precipprob ?? day.rainProbability ?? day.precipProbability ?? day.precipProb ?? day.probability);
+                    if (val == null) return;
+                    months[monthIndex].sum += val;
+                    months[monthIndex].count += 1;
+                });
+                const averages = months.map(m => (m.count > 0 ? Math.round(m.sum / m.count) : null));
+                if (averages.every(v => v == null || Number.isNaN(v))) return;
+                const updated = (labelIsos.length === averages.length)
+                    ? labelIsos.map((key, idx) => {
+                        const monthIdx = Number((key || '').slice(5, 7)) - 1;
+                        if (!Number.isFinite(monthIdx) || monthIdx < 0 || monthIdx >= averages.length) return averages[idx] ?? baseData[idx] ?? null;
+                        const val = averages[monthIdx];
+                        if (val == null || Number.isNaN(val)) return baseData[idx] ?? null;
+                        return val;
+                    })
+                    : averages;
+                rainDataset.data = updated;
+                rainDataset.spanGaps = true;
+                enableRainAxis();
+                try {
+                    statsChart.update();
+                } catch (err) {
+                    console.warn('Falha ao atualizar gráfico anual com dados de chuva', err);
+                }
+                return;
+            }
+
+            if (!Array.isArray(labelIsos) || labelIsos.length === 0) return;
+            const isoLookup = new Map();
             weatherDays.forEach(day => {
                 const isoCandidate = (day.date || day.datetime || day.dateStr || '').toString();
-                if (!isoCandidate.startsWith(referenceYear)) return;
-                const monthIndex = Number(isoCandidate.slice(5, 7)) - 1;
-                if (Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return;
+                const iso = isoCandidate.slice(0, 10);
+                if (!iso) return;
                 const val = parseRainProbability(day.precipprob ?? day.rainProbability ?? day.precipProbability ?? day.precipProb ?? day.probability);
                 if (val == null) return;
-                months[monthIndex].sum += val;
-                months[monthIndex].count += 1;
+                isoLookup.set(iso, val);
             });
-            const averages = months.map(m => (m.count > 0 ? Math.round(m.sum / m.count) : null));
-            if (averages.every(v => v == null || Number.isNaN(v))) return;
-            rainDataset.data = averages;
+            if (isoLookup.size === 0) return;
+            const updated = labelIsos.map((iso, idx) => {
+                if (iso && isoLookup.has(iso)) return isoLookup.get(iso);
+                const prev = baseData[idx];
+                if (prev != null && !Number.isNaN(prev)) return prev;
+                return null;
+            });
+            if (updated.every(v => v == null || Number.isNaN(v))) return;
+            rainDataset.data = updated;
             rainDataset.spanGaps = true;
-            const y2 = statsChart.options && statsChart.options.scales ? statsChart.options.scales.y2 : null;
-            if (y2) y2.display = true;
+            enableRainAxis();
             try {
                 statsChart.update();
             } catch (err) {
-                console.warn('Falha ao atualizar gráfico anual com dados de chuva', err);
+                console.warn('Falha ao atualizar gráfico de chuva', err);
             }
         };
 
@@ -1932,18 +1973,21 @@ export function init(appStore, bootstrapOverride) {
                 counts = monthly.counts;
                 revenue = monthly.revenue;
                 rainPercent = monthly.rainPercent;
+                labelIsos = monthly.labelIso;
             } else {
                 const rainValues = [];
                 let hasRain = false;
                 labels = [];
                 counts = [];
                 revenue = [];
-                sorted.forEach(([, data]) => {
+                labelIsos = [];
+                sorted.forEach(([iso, data]) => {
                     labels.push(data.label);
                     counts.push(data.count);
                     revenue.push(data.revenue);
                     const rainValue = parseRainProbability(data.rain);
                     if (rainValue != null) { rainValues.push(rainValue); hasRain = true; } else { rainValues.push(null); }
+                    labelIsos.push(iso);
                 });
                 rainPercent = hasRain ? rainValues : null;
             }
@@ -1956,14 +2000,17 @@ export function init(appStore, bootstrapOverride) {
                     counts = monthly.counts;
                     revenue = monthly.revenue;
                     rainPercent = monthly.rainPercent;
+                    labelIsos = monthly.labelIso;
                 } else {
                     labels = [];
                     counts = [];
                     revenue = [];
+                    labelIsos = [];
                     sorted.forEach(([iso, data]) => {
                         labels.push(formatDatePtBr(iso));
                         counts.push(data.count);
                         revenue.push(Math.round(data.revenue * 100) / 100);
+                        labelIsos.push(iso);
                     });
                     rainPercent = null;
                 }
@@ -1972,6 +2019,7 @@ export function init(appStore, bootstrapOverride) {
                 counts = [];
                 revenue = [];
                 rainPercent = null;
+                labelIsos = [];
             }
         }
 
@@ -2202,7 +2250,7 @@ export function init(appStore, bootstrapOverride) {
         }
 
     updateHomeWeatherDates(weather, refDate);
-    maybeFillAnnualRainFromWeather(weather);
+    applyWeatherDataToChart(weather);
 
     // Calcula e exibe a distribuição percentual das condições climáticas na visão de estatísticas
         try {
