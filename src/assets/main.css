@@ -84,6 +84,50 @@ body {
   color: #e2e8f0; /* Cor de texto principal (slate-200) */
 }
 
+#role-selection-view {
+  margin-top: 32px;
+}
+
+.role-selection-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.role-selection-promo {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.role-selection-promo .card-title,
+.role-selection-card .card-title {
+  color: #ffffff;
+}
+
+.role-selection-promo .card-text,
+.role-selection-card .card-text {
+  color: #e2e8f0;
+}
+
+.role-selection-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  color: #cbd5e1;
+}
+
+.role-selection-benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.role-selection-benefits span[aria-hidden="true"] {
+  font-size: 1rem;
+}
+
 header {
   background-color: #0f172a;
   color: #e2e8f0;

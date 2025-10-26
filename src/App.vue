@@ -48,13 +48,29 @@
     <main class="container py-4">
       <!-- Tela de Seleção de Perfil -->
       <div id="role-selection-view">
-        <div class="card p-4 mx-auto" style="max-width: 500px;">
-          <h2 class="card-title h4" style="color:#ffffff;">Bem-vindo!</h2>
-          <p class="card-text" style="color:#ffffff;">Como você gostaria de acessar o sistema?</p>
-          <div class="d-grid gap-3 pt-3">
-            <button id="select-client-role" class="btn btn-cyan btn-lg">Sou Cliente</button>
-            <button id="select-admin-role" class="btn btn-secondary btn-lg">Sou Administrador</button>
-          </div>
+        <div class="role-selection-layout">
+          <section class="card role-selection-promo p-4">
+            <div class="d-flex flex-column gap-2">
+              <h2 class="card-title h4 mb-1">Bem-vindo!</h2>
+              <p class="card-text text-light">
+                Centralize seus agendamentos, acompanhe o clima e mantenha a equipe alinhada em um único lugar.
+              </p>
+              <ul class="list-unstyled role-selection-benefits">
+                <li><span aria-hidden="true">✅</span> Visualize disponibilidade em tempo real.</li>
+                <li><span aria-hidden="true">✅</span> Receba alertas de clima para planejar a operação.</li>
+                <li><span aria-hidden="true">✅</span> Exporte estatísticas e acompanhe a evolução do negócio.</li>
+              </ul>
+              <p class="small text-secondary mb-0">Escolha abaixo como deseja acessar.</p>
+            </div>
+          </section>
+          <section class="card role-selection-card p-4">
+            <h2 class="card-title h4" style="color:#ffffff;">Começar agora</h2>
+            <p class="card-text" style="color:#ffffff;">Selecione o perfil mais adequado para continuar.</p>
+            <div class="d-grid gap-3 pt-3">
+              <button id="select-client-role" class="btn btn-cyan btn-lg">Sou Cliente</button>
+              <button id="select-admin-role" class="btn btn-secondary btn-lg">Sou Administrador</button>
+            </div>
+          </section>
         </div>
       </div>
 
