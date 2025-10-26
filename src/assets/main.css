@@ -12,19 +12,18 @@
 }
 
 #home-weather-layout {
-  /* Align weather cards with the header title */
-  align-self: flex-start;
-  display: grid;
-  grid-template-columns: minmax(244px, auto) minmax(320px, 1fr);
-  gap: 20px;
-  justify-content: end;
+  /* Cards "Hoje" e "Amanhã" seguidos pelo grid completo */
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   align-items: flex-start;
+  width: 100%;
   margin-top: 0 !important;
 }
 
 .app-header #home-weather-layout {
   margin-top: 0;
-  justify-content: end;
 }
 
 body[data-active-role="client"] #home-weather-layout {
@@ -76,17 +75,18 @@ body[data-active-role="client"] #home-weather-layout {
   text-decoration: underline;
 }
 
-.weather-alert-actions a:hover {
-  color: #fff;
+.weather-dates-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 16px;
+  position: relative;
+  --weather-row-height: 88px;
+  --weather-gap: 8px;
+  margin-left: 0;
+  width: 100%;
 }
-body {
-  background-color: #0f172a; /* Cor de fundo principal (slate-900) */
-  color: #e2e8f0; /* Cor de texto principal (slate-200) */
-}
-/* Tipografia responsiva base: ajusta levemente conforme a largura da tela */
-html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
-.card {
-  background-color: #1e293b; /* Cor dos cards (slate-800) */
   border: 1px solid #334155; /* Cor da borda dos cards (slate-700) */
 }
 
@@ -101,10 +101,10 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
 }
 .a11y-large-text {
   /* aumenta o tamanho base da fonte em 20% para acessibilidade */
-  font-size: 1.2em !important; /* 120% */
+#home-weather-legend {
+  margin-top: 12px;
+  transform: none;
 }
-/* Movimento reduzido: remove animações/transições */
-.a11y-reduced-motion *, .a11y-reduced-motion *::before, .a11y-reduced-motion *::after {
   animation: none !important;
   transition: none !important;
 }
@@ -162,8 +162,8 @@ html { font-size: clamp(14px, 1.1vw + 0.6rem, 18px); }
   display: none;
 }
 #home-weather-legend {
-  margin-top: 50px;
-  transform: translateX(50px);
+  margin-top: 12px;
+  transform: none;
 }
 
 body[data-active-role="selection"] .weather-dates-wrapper,
@@ -189,14 +189,15 @@ body[data-active-role="client"] .weather-dates-wrapper {
 
 .weather-dates-wrapper {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: flex-start;
   gap: 16px;
   position: relative;
   --weather-row-height: 88px;
   --weather-gap: 8px;
   margin-left: 0;
+  width: 100%;
 }
 
 .weather-dates-grid {
