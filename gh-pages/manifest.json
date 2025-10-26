@@ -1,6 +1,6 @@
 {
   "index.html": {
-    "file": "assets/index-Da5Gat7M.js",
+    "file": "assets/index-CkJKMTi6.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -9,12 +9,12 @@
     ]
   },
   "src/main.js": {
-    "file": "assets/main-BfRdmkFE.js",
+    "file": "assets/main-CBAkEdqm.js",
     "name": "main",
     "src": "src/main.js",
     "isDynamicEntry": true,
     "css": [
-      "assets/main-xS-El9Qb.css"
+      "assets/main-D6WApemY.css"
     ]
   }
 }
