@@ -297,7 +297,7 @@ export function init(appStore, bootstrapOverride) {
         if (store && typeof store.setRole === 'function') {
             store.setRole(role || 'selection');
         }
-        const showHomeWeather = role === 'client' || role === 'admin';
+        const showHomeWeather = true; // mantém cards de clima visíveis em todas as etapas
         if (homeWeatherLayout) {
             homeWeatherLayout.classList.toggle('d-none', !showHomeWeather);
         }

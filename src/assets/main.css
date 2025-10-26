@@ -27,10 +27,6 @@
   justify-content: end;
 }
 
-body[data-active-role="selection"] #home-weather-layout {
-  display: none;
-}
-
 body[data-active-role="client"] #home-weather-layout {
   margin-top: 200px;
 }
