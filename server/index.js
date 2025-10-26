@@ -104,17 +104,15 @@ function recomputeStatsForDates(dates, appointments) {
   unique.forEach((iso) => {
     const aggregated = aggregateStats(appointments, iso, iso);
     const entry = aggregated.get(iso);
-    const current = store[iso] || {};
+    const current = store[iso];
     if (!entry) {
-      if (current.rainProbability !== undefined) {
+      if (current) {
         store[iso] = {
           date: iso,
-          carsWashed: 0,
-          totalRevenue: 0,
-          rainProbability: current.rainProbability
+          carsWashed: typeof current.carsWashed === 'number' ? current.carsWashed : 0,
+          totalRevenue: typeof current.totalRevenue === 'number' ? current.totalRevenue : 0,
+          rainProbability: current.rainProbability !== undefined ? current.rainProbability : null
         };
-      } else {
-        delete store[iso];
       }
       return;
     }
@@ -122,7 +120,7 @@ function recomputeStatsForDates(dates, appointments) {
       date: iso,
       carsWashed: entry.carsWashed,
       totalRevenue: entry.totalRevenue,
-      rainProbability: current.rainProbability !== undefined ? current.rainProbability : entry.rainProbability
+      rainProbability: current && current.rainProbability !== undefined ? current.rainProbability : entry.rainProbability
     };
   });
   writeStatsStore(store);
