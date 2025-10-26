@@ -176,14 +176,17 @@ html {
 
 .weather-legend {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-start;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 16px;
+  align-items: center;
+  overflow-x: auto;
 }
 .weather-legend span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 .weather-legend:empty {
   display: none;
