@@ -191,10 +191,15 @@
                   <input type="text" id="stats-cep" class="form-control form-control-sm compact-50 stats-ctrl" placeholder="Ex: 01001-000" />
                   <div id="stats-cep-feedback" class="small text-warning d-none mt-1" aria-live="polite"></div>
                 </div>
+                <div class="col-12 col-md-auto">
+                  <label for="vc-api-key" class="form-label">Visual Crossing API Key:</label>
+                  <input type="text" id="vc-api-key" class="form-control form-control-sm compact-50 stats-ctrl" placeholder="Cole a chave aqui" autocomplete="off" />
+                </div>
                 <div class="col-auto d-flex align-items-end">
                   <div class="d-flex gap-2">
                     <button id="stats-refresh" class="btn btn-cyan">Atualizar</button>
                     <button id="stats-export" class="btn btn-outline-light">Exportar CSV</button>
+                    <button id="weather-test-btn" type="button" class="btn btn-outline-info">Testar APIs de Clima</button>
                   </div>
                 </div>
               </div>
@@ -319,6 +324,25 @@
         </div>
       </div>
     </div>
+
+      <!-- Modal de Diagnóstico de Clima -->
+      <div class="modal fade" id="weather-test-modal" tabindex="-1" aria-labelledby="weather-test-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header border-0">
+              <h5 class="modal-title" id="weather-test-modal-label">Diagnóstico das APIs de Clima</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-secondary">O teste usa a chave informada acima para a Visual Crossing e valores padrão para a Open-Meteo.</p>
+              <pre id="weather-test-results" class="bg-dark text-light p-3 rounded" style="min-height: 160px; white-space: pre-wrap; word-break: break-word;">Nenhum teste executado ainda.</pre>
+            </div>
+            <div class="modal-footer border-0">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
     <!-- Modal de senha do Administrador -->
     <div class="modal fade" id="admin-password-modal" tabindex="-1" aria-labelledby="admin-password-modal-label" aria-hidden="true">

@@ -933,6 +933,11 @@ export function init(appStore, bootstrapOverride) {
     const statsRefresh = document.getElementById('stats-refresh');
     const statsChartEl = document.getElementById('stats-chart');
     const statsWeatherEl = document.getElementById('stats-weather');
+    const vcApiKeyInput = document.getElementById('vc-api-key');
+    const weatherTestBtn = document.getElementById('weather-test-btn');
+    const weatherTestModalElement = document.getElementById('weather-test-modal');
+    const weatherTestResults = document.getElementById('weather-test-results');
+    const weatherTestModal = weatherTestModalElement ? new bootstrap.Modal(weatherTestModalElement) : null;
     let statsReady = false;
     let statsUpdateQueue = Promise.resolve();
     let statsChart = null;
@@ -970,6 +975,21 @@ export function init(appStore, bootstrapOverride) {
         const cepInputEl = document.getElementById('stats-cep');
         if (lastCep && cepInputEl) cepInputEl.value = lastCep;
     } catch (e) { /* ignore */ }
+
+    const VC_API_KEY_STORAGE = 'visualCrossingApiKey_v1';
+    if (vcApiKeyInput) {
+        try {
+            const savedKey = localStorage.getItem(VC_API_KEY_STORAGE);
+            if (savedKey) vcApiKeyInput.value = savedKey;
+        } catch (e) { /* ignore */ }
+        vcApiKeyInput.addEventListener('input', () => {
+            const value = (vcApiKeyInput.value || '').trim();
+            try {
+                if (value) localStorage.setItem(VC_API_KEY_STORAGE, value);
+                else localStorage.removeItem(VC_API_KEY_STORAGE);
+            } catch (e) { /* ignore */ }
+        });
+    }
 
     // Inicializa a visão de estatísticas: carrega Chart.js se necessário e desenha o gráfico
     async function initializeStats() {
@@ -1056,6 +1076,85 @@ export function init(appStore, bootstrapOverride) {
         } catch (e) {
             return null;
         }
+    }
+
+    async function runWeatherDiagnostics(apiKeyValue) {
+        const lat = -23.55;
+        const lon = -46.63;
+        const today = getTodayString();
+        const lines = [];
+
+        const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${today}&end_date=${today}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
+        lines.push('[Open-Meteo]');
+        try {
+            const res = await fetch(openMeteoUrl);
+            lines.push(`Status: ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
+            if (res.ok) {
+                const data = await res.json();
+                const days = Array.isArray(data?.daily?.time) ? data.daily.time.length : 0;
+                lines.push(`Dias retornados: ${days}`);
+                if (days > 0) {
+                    const code = Array.isArray(data.daily.weathercode) ? data.daily.weathercode[0] : 'n/d';
+                    lines.push(`Primeiro dia: ${data.daily.time[0]} · Código: ${code}`);
+                }
+            } else {
+                const text = await res.text();
+                lines.push(`Corpo: ${(text || '').slice(0, 280) || '(vazio)'}`);
+            }
+        } catch (err) {
+            lines.push(`Erro: ${(err && err.message) || String(err)}`);
+        }
+
+        lines.push('');
+        lines.push('[Visual Crossing]');
+        if (!apiKeyValue) {
+            lines.push('Chave não informada. Informe a Visual Crossing API Key para testar.');
+            return lines.join('\n');
+        }
+
+        const maskedKey = apiKeyValue.length <= 6 ? apiKeyValue : `${apiKeyValue.slice(0, 4)}…${apiKeyValue.slice(-2)}`;
+        lines.push(`Chave usada: ${maskedKey}`);
+        const vcUrl = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}/${today}/${today}?unitGroup=metric&include=days&elements=datetime,conditions,precipprob&key=${encodeURIComponent(apiKeyValue)}&contentType=json`;
+        try {
+            const res = await fetch(vcUrl);
+            lines.push(`Status: ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
+            const raw = await res.text();
+            if (res.ok) {
+                try {
+                    const data = JSON.parse(raw);
+                    const days = Array.isArray(data?.days) ? data.days.length : 0;
+                    lines.push(`Dias retornados: ${days}`);
+                    if (days > 0) {
+                        const first = data.days[0] || {};
+                        lines.push(`Primeiro dia: ${first.datetime || 'n/d'} · Condição: ${(first.conditions || 'n/d')} · PrecipProb: ${first.precipprob ?? 'n/d'}`);
+                    }
+                } catch (e) {
+                    lines.push(`Corpo: ${(raw || '').slice(0, 280) || '(vazio)'}`);
+                }
+            } else {
+                lines.push(`Corpo: ${(raw || '').slice(0, 280) || '(vazio)'}`);
+            }
+        } catch (err) {
+            lines.push(`Erro: ${(err && err.message) || String(err)}`);
+        }
+
+        return lines.join('\n');
+    }
+
+    if (weatherTestBtn && weatherTestModal && weatherTestResults) {
+        weatherTestBtn.addEventListener('click', async () => {
+            const key = (vcApiKeyInput && vcApiKeyInput.value) ? vcApiKeyInput.value.trim() : '';
+            if (vcApiKeyInput) {
+                try {
+                    if (key) localStorage.setItem(VC_API_KEY_STORAGE, key);
+                    else localStorage.removeItem(VC_API_KEY_STORAGE);
+                } catch (e) { /* ignore */ }
+            }
+            weatherTestResults.textContent = 'Executando diagnósticos...';
+            weatherTestModal.show();
+            const report = await runWeatherDiagnostics(key);
+            weatherTestResults.textContent = report;
+        });
     }
 
     // Utilitários simples de cache de CEP usando localStorage
