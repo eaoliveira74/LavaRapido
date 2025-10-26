@@ -32,9 +32,12 @@
         </div>
         <!-- Cards de previsão: Hoje / Amanhã -->
         <div id="home-weather-layout">
-          <div id="home-weather-cards" class="d-flex gap-2 flex-wrap">
-            <div id="weather-card-today" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
-            <div id="weather-card-tomorrow" class="weather-card bg-light text-dark p-2 rounded" aria-live="polite"></div>
+          <div class="home-weather-top">
+            <div id="home-weather-cards" class="d-flex gap-2 flex-wrap">
+              <div id="weather-card-today" class="weather-card p-3 rounded" aria-live="polite"></div>
+              <div id="weather-card-tomorrow" class="weather-card p-3 rounded" aria-live="polite"></div>
+            </div>
+            <div id="home-weather-alerts" class="weather-alerts d-none" aria-live="polite" role="region"></div>
           </div>
           <div class="weather-dates-wrapper">
             <div id="home-weather-dates" class="weather-dates-grid" aria-live="polite"></div>
@@ -42,7 +45,6 @@
           </div>
         </div>
       </div>
-      <div id="home-weather-alerts" class="weather-alerts d-none" aria-live="polite" role="region"></div>
     </header>
 
     <main class="container py-4">
@@ -51,16 +53,16 @@
         <div class="role-selection-layout">
           <section class="card role-selection-promo p-4">
             <div class="d-flex flex-column gap-2">
-              <h2 class="card-title h4 mb-1">Bem-vindo!</h2>
+              <h2 class="card-title h4 mb-1">Bem-vindo, cliente!</h2>
               <p class="card-text text-light">
-                Centralize seus agendamentos, acompanhe o clima e mantenha a equipe alinhada em um único lugar.
+                Agende o melhor horário para o seu veículo, acompanhe a previsão do tempo e fique tranquilo com nossas atualizações instantâneas.
               </p>
               <ul class="list-unstyled role-selection-benefits">
-                <li><span aria-hidden="true">✅</span> Visualize disponibilidade em tempo real.</li>
-                <li><span aria-hidden="true">✅</span> Receba alertas de clima para planejar a operação.</li>
-                <li><span aria-hidden="true">✅</span> Exporte estatísticas e acompanhe a evolução do negócio.</li>
+                <li><span aria-hidden="true">✅</span> Veja os horários disponíveis em tempo real.</li>
+                <li><span aria-hidden="true">✅</span> Receba dicas baseadas no clima para cuidar melhor do carro.</li>
+                <li><span aria-hidden="true">✅</span> Garanta o atendimento com poucos cliques.</li>
               </ul>
-              <p class="small text-secondary mb-0">Escolha abaixo como deseja acessar.</p>
+              <p class="small text-secondary mb-0">Selecione abaixo como deseja continuar.</p>
             </div>
           </section>
           <section class="card role-selection-card p-4">
