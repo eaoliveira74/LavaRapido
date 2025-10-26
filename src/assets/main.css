@@ -336,7 +336,7 @@ body[data-active-role="client"] .weather-dates-grid {
 }
 .weather-dates-grid:empty { display: none; }
 .weather-date-entry {
-  background: rgba(15, 23, 42, 0.75);
+  background: linear-gradient(180deg, #0f172a 0%, #1d2a3c 100%);
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 8px;
   padding: 6px 4px;
@@ -348,11 +348,15 @@ body[data-active-role="client"] .weather-dates-grid {
   align-items: center;
   gap: 4px;
   min-height: var(--weather-row-height);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.weather-date-entry:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.35);
 }
 .weather-date-entry.is-selected-date {
-  background: #064e3b;
-  border-color: rgba(16, 185, 129, 0.75);
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35);
+  border-color: rgba(56, 189, 248, 0.75);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
 }
 .weather-date-entry.is-selected-date .date-label,
 .weather-date-entry.is-selected-date .date-extra,
