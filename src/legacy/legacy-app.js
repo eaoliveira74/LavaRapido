@@ -977,6 +977,17 @@ export function init(appStore, bootstrapOverride) {
     } catch (e) { /* ignore */ }
 
     const VC_API_KEY_STORAGE = 'visualCrossingApiKey_v1';
+    const getStoredVisualCrossingKey = () => {
+        try {
+            const stored = localStorage.getItem(VC_API_KEY_STORAGE);
+            if (stored && stored.trim()) return stored.trim();
+        } catch (e) { /* ignore */ }
+        if (vcApiKeyInput && vcApiKeyInput.value && vcApiKeyInput.value.trim()) {
+            return vcApiKeyInput.value.trim();
+        }
+        return '';
+    };
+
     if (vcApiKeyInput) {
         try {
             const savedKey = localStorage.getItem(VC_API_KEY_STORAGE);
@@ -1345,7 +1356,99 @@ export function init(appStore, bootstrapOverride) {
     };
 
     // Busca clima através do proxy do Visual Crossing rodando no servidor
+    async function fetchVisualCrossingDirect(key, lat, lon, startDate, endDate) {
+        const startPath = startDate ? `/${startDate}` : '';
+        const endPath = endDate ? `/${endDate}` : '';
+        const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}${startPath}${endPath}?unitGroup=metric&include=days,alerts&elements=datetime,conditions,temp,tempmax,tempmin,precip,precipprob&key=${encodeURIComponent(key)}&contentType=json`;
+        try {
+            const res = await fetch(url);
+            const body = await res.text();
+            if (!res.ok) {
+                return { ok: false, status: res.status, statusText: res.statusText || '', body: body || '', url };
+            }
+            let json;
+            try {
+                json = JSON.parse(body);
+            } catch (parseErr) {
+                return { ok: false, status: res.status, statusText: res.statusText || '', body: body || '', url };
+            }
+            const days = Array.isArray(json?.days) ? json.days.map((d) => {
+                const precipprob = d?.precipprob;
+                const derived = (() => {
+                    const p = Number(precipprob);
+                    if (!Number.isNaN(p) && p >= 30) return 'Chuvoso';
+                    return normalizeConditionLabel(d?.conditions || '');
+                })();
+                return {
+                    date: d?.datetime || '',
+                    conditions: d?.conditions || '',
+                    conditionSimple: derived,
+                    temp: d?.temp != null ? d.temp : null,
+                    tempmax: d?.tempmax != null ? d.tempmax : null,
+                    tempmin: d?.tempmin != null ? d.tempmin : null,
+                    precip: d?.precip != null ? d.precip : null,
+                    precipprob: precipprob != null ? precipprob : null
+                };
+            }) : [];
+            const alerts = Array.isArray(json?.alerts) ? json.alerts.map((alert) => ({
+                event: alert?.event || '',
+                headline: alert?.headline || '',
+                description: alert?.description || alert?.detail || '',
+                severity: alert?.severity || alert?.level || '',
+                onset: alert?.onset || alert?.starts || alert?.start || null,
+                expires: alert?.expires || alert?.ends || alert?.end || null,
+                regions: Array.isArray(alert?.regions) ? alert.regions : [],
+                link: alert?.link || alert?.alerturl || ''
+            })) : [];
+            return {
+                ok: true,
+                data: {
+                    lat: json?.latitude != null ? json.latitude : parseFloat(lat),
+                    lon: json?.longitude != null ? json.longitude : parseFloat(lon),
+                    days,
+                    alerts
+                },
+                url
+            };
+        } catch (e) {
+            return { ok: false, error: e instanceof Error ? e.message : String(e), url };
+        }
+    }
+
     async function fetchVisualWeather(lat, lon, startDate, endDate) {
+        const key = getStoredVisualCrossingKey();
+        if (key) {
+            const direct = await fetchVisualCrossingDirect(key, lat, lon, startDate, endDate);
+            if (direct?.ok && direct.data) {
+                if (typeof window !== 'undefined') {
+                    window.__lastWeatherFetch = {
+                        transport: 'visual-crossing-direct',
+                        ok: true,
+                        lat,
+                        lon,
+                        startDate,
+                        endDate,
+                        days: Array.isArray(direct.data?.days) ? direct.data.days.length : null
+                    };
+                }
+                return direct.data;
+            }
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'visual-crossing-direct',
+                    ok: false,
+                    lat,
+                    lon,
+                    startDate,
+                    endDate,
+                    status: direct?.status || null,
+                    statusText: direct?.statusText || null,
+                    error: direct?.error || null,
+                    body: direct?.body ? String(direct.body).slice(0, 280) : null
+                };
+            }
+        }
+
         try {
             const backend = getBackendBase();
             const url = new URL(`${backend}/api/visual-weather`);
@@ -1357,7 +1460,7 @@ export function init(appStore, bootstrapOverride) {
             if (!res.ok) {
                 if (typeof window !== 'undefined') {
                     window.__lastWeatherFetch = {
-                        transport: 'visual-crossing',
+                        transport: 'visual-crossing-proxy',
                         ok: false,
                         status: res.status,
                         url: url.toString(),
@@ -1373,7 +1476,7 @@ export function init(appStore, bootstrapOverride) {
             if (payload && !Array.isArray(payload.alerts)) payload.alerts = [];
             if (typeof window !== 'undefined') {
                 window.__lastWeatherFetch = {
-                    transport: 'visual-crossing',
+                    transport: 'visual-crossing-proxy',
                     ok: true,
                     status: res.status,
                     url: url.toString(),
@@ -1388,7 +1491,7 @@ export function init(appStore, bootstrapOverride) {
         } catch (e) {
             if (typeof window !== 'undefined') {
                 window.__lastWeatherFetch = {
-                    transport: 'visual-crossing',
+                    transport: 'visual-crossing-proxy',
                     ok: false,
                     error: e instanceof Error ? e.message : String(e),
                     lat,
@@ -1397,7 +1500,6 @@ export function init(appStore, bootstrapOverride) {
                     endDate
                 };
             }
-            console.warn('visual weather fetch failed', e);
             return null;
         }
     }
