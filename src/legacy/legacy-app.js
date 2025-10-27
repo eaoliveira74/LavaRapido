@@ -1535,7 +1535,7 @@ export function init(appStore, bootstrapOverride) {
     const readWeatherCache = () => { try { return JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}'); } catch (e) { return {}; } };
     const writeWeatherCache = (c) => { try { localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(c)); } catch (e) {} };
 
-    // Auxiliar para buscar e armazenar em cache a linha do tempo do Visual Crossing (ou alternativa) para pequenos intervalos
+    // Auxiliar para buscar e armazenar em cache a previsão (prioriza Open-Meteo para intervalos curtos)
     async function fetchTwoDayWeatherCached(lat, lon) {
         const start = getTodayString();
         const tomorrow = (() => { const d = new Date(start + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
@@ -1545,82 +1545,76 @@ export function init(appStore, bootstrapOverride) {
         if (cache[key] && (now - (cache[key].ts || 0) < WEATHER_CACHE_TTL)) {
             const cachedEntry = cache[key].data || null;
             if (cachedEntry && !Array.isArray(cachedEntry.alerts)) cachedEntry.alerts = [];
-            const cachedSource = (cachedEntry && typeof cachedEntry.source === 'string') ? cachedEntry.source : '';
-            const hasVisualPreference = !!getStoredVisualCrossingKey();
-            const cacheIsVisual = cachedSource.startsWith('visual-crossing');
-            // Prioriza Visual Crossing: se o cache veio de fallback e agora há chave cadastral, refaz a busca.
-            if (!hasVisualPreference || cacheIsVisual) {
-                if (typeof window !== 'undefined') {
-                    window.__lastWeatherFetch = {
-                        transport: 'two-day-cache',
-                        ok: true,
-                        cached: true,
-                        lat,
-                        lon,
-                        startDate: start,
-                        endDate: tomorrow,
-                        days: Array.isArray(cachedEntry?.days) ? cachedEntry.days.length : null
-                    };
-                }
-                return cachedEntry;
-            }
-        }
-    // Tenta primeiro o proxy do Visual Crossing
-        let data = null;
-        try {
-            const vc = await fetchVisualWeather(lat, lon, start, tomorrow);
-            if (vc && vc.days) {
-                data = vc;
-                if (data && !Array.isArray(data.alerts)) data.alerts = [];
-                if (!data.source) data.source = 'visual-crossing-proxy';
-                if (typeof window !== 'undefined') {
-                    window.__lastWeatherFetch = {
-                        transport: 'visual-crossing',
-                        ok: true,
-                        cached: false,
-                        lat,
-                        lon,
-                        startDate: start,
-                        endDate: tomorrow,
-                        days: Array.isArray(data?.days) ? data.days.length : null
-                    };
-                }
-            }
-        } catch (e) { /* ignore */ }
-        if (!data) {
-            // Se falhar, usa resumo do Open-Meteo e adapta o formato (min/máx/sensação/previsão de chuva)
-            const om = await fetchWeatherSummary(start, tomorrow, lat, lon);
-            if (om && om.length) {
-                data = {
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'two-day-cache',
+                    ok: true,
+                    cached: true,
                     lat,
                     lon,
-                    days: om.map(d => ({
-                        date: d.date,
-                        conditionSimple: d.label,
-                        temp: null,
-                        tempmax: (d.tempmax != null ? d.tempmax : null),
-                        tempmin: (d.tempmin != null ? d.tempmin : null),
-                        feelslikemax: (d.feelslikemax != null ? d.feelslikemax : null),
-                        feelslikemin: (d.feelslikemin != null ? d.feelslikemin : null),
-                        precipprob: (d.precipprob != null ? d.precipprob : null),
-                        precip: (d.precip != null ? d.precip : null)
-                    })),
-                    alerts: [],
-                    source: 'open-meteo'
+                    startDate: start,
+                    endDate: tomorrow,
+                    days: Array.isArray(cachedEntry?.days) ? cachedEntry.days.length : null
                 };
-                if (typeof window !== 'undefined') {
-                    window.__lastWeatherFetch = {
-                        transport: 'open-meteo',
-                        ok: true,
-                        cached: false,
-                        lat,
-                        lon,
-                        startDate: start,
-                        endDate: tomorrow,
-                        days: om.length
-                    };
-                }
             }
+            return cachedEntry;
+        }
+        let data = null;
+        // Tenta primeiro o resumo do Open-Meteo e adapta o formato (min/máx/sensação/previsão de chuva)
+        const om = await fetchWeatherSummary(start, tomorrow, lat, lon);
+        if (om && om.length) {
+            data = {
+                lat,
+                lon,
+                days: om.map(d => ({
+                    date: d.date,
+                    conditionSimple: d.label,
+                    temp: null,
+                    tempmax: (d.tempmax != null ? d.tempmax : null),
+                    tempmin: (d.tempmin != null ? d.tempmin : null),
+                    feelslikemax: (d.feelslikemax != null ? d.feelslikemax : null),
+                    feelslikemin: (d.feelslikemin != null ? d.feelslikemin : null),
+                    precipprob: (d.precipprob != null ? d.precipprob : null),
+                    precip: (d.precip != null ? d.precip : null)
+                })),
+                alerts: [],
+                source: 'open-meteo'
+            };
+            if (typeof window !== 'undefined') {
+                window.__lastWeatherFetch = {
+                    transport: 'open-meteo',
+                    ok: true,
+                    cached: false,
+                    lat,
+                    lon,
+                    startDate: start,
+                    endDate: tomorrow,
+                    days: om.length
+                };
+            }
+        }
+        if (!data) {
+            // Caso o Open-Meteo falhe, tenta o proxy do Visual Crossing
+            try {
+                const vc = await fetchVisualWeather(lat, lon, start, tomorrow);
+                if (vc && vc.days) {
+                    data = vc;
+                    if (data && !Array.isArray(data.alerts)) data.alerts = [];
+                    if (!data.source) data.source = 'visual-crossing-proxy';
+                    if (typeof window !== 'undefined') {
+                        window.__lastWeatherFetch = {
+                            transport: 'visual-crossing',
+                            ok: true,
+                            cached: false,
+                            lat,
+                            lon,
+                            startDate: start,
+                            endDate: tomorrow,
+                            days: Array.isArray(data?.days) ? data.days.length : null
+                        };
+                    }
+                }
+            } catch (e) { /* ignore */ }
         }
         if (data && !Array.isArray(data.alerts)) data.alerts = [];
         cache[key] = { ts: now, data };
@@ -2250,18 +2244,16 @@ export function init(appStore, bootstrapOverride) {
         };
 
         try {
-            // Prefere o proxy do Visual Crossing se estiver disponível
-            const vc = await fetchVisualWeather(lat, lon, start, end);
-            if (vc && vc.days) {
-                // Visual Crossing: renderiza faixas com ícones e rótulos localizados
-                const legendEl = document.getElementById('home-weather-legend');
-                const infoEl = document.getElementById('stats-weather');
-                if (legendEl) legendEl.innerHTML = '';
-                populateWeatherStrip(vc.days, range, refDate);
+            // Prioriza o Open-Meteo; usa Visual Crossing como alternativa caso necessário
+            const days = await fetchWeatherSummary(start, end, lat, lon);
+            const legendEl = document.getElementById('home-weather-legend');
+            const infoEl = document.getElementById('stats-weather');
+            if (legendEl) legendEl.innerHTML = '';
 
-                // Preenche a legenda
+            if (Array.isArray(days) && days.length) {
+                populateWeatherStrip(days, range, refDate);
+
                 if (legendEl) {
-                    legendEl.innerHTML = '';
                     const makeSpan = (icon, text) => {
                         const sp = document.createElement('span');
                         sp.innerHTML = `${icon}<strong style="margin-left:6px;">${text}</strong>`;
@@ -2273,23 +2265,15 @@ export function init(appStore, bootstrapOverride) {
                     legendEl.appendChild(makeSpan(ICON_RAIN, 'Chuvoso'));
                 }
 
-                if (infoEl) infoEl.textContent = 'Previsão meteorológica (Visual Crossing).';
-                weather = vc.days;
-                // Melhor esforço: persiste probabilidade de chuva nas estatísticas para uso futuro
-                await upsertRainProbabilities(vc.days);
+                if (infoEl) infoEl.textContent = 'Previsão meteorológica (Open-Meteo).';
+                weather = days;
+                await upsertRainProbabilities(days);
             } else {
-                // Alternativa com Open-Meteo mantendo o mesmo formato de visualização
-                const days = await fetchWeatherSummary(start, end, lat, lon);
-                const legendEl = document.getElementById('home-weather-legend');
-                const infoEl = document.getElementById('stats-weather');
-                if (legendEl) legendEl.innerHTML = '';
+                const vc = await fetchVisualWeather(lat, lon, start, end);
+                if (vc && vc.days) {
+                    populateWeatherStrip(vc.days, range, refDate);
 
-                populateWeatherStrip(days, range, refDate);
-
-                if (days && days.length) {
-                    // Legenda
                     if (legendEl) {
-                        legendEl.innerHTML = '';
                         const makeSpan = (icon, text) => {
                             const sp = document.createElement('span');
                             sp.innerHTML = `${icon}<strong style="margin-left:6px;">${text}</strong>`;
@@ -2300,12 +2284,12 @@ export function init(appStore, bootstrapOverride) {
                         legendEl.appendChild(makeSpan(ICON_CLOUD, 'Nublado'));
                         legendEl.appendChild(makeSpan(ICON_RAIN, 'Chuvoso'));
                     }
-                    if (infoEl) infoEl.textContent = 'Previsão meteorológica.';
-                    weather = days;
-                    await upsertRainProbabilities(days);
+
+                    if (infoEl) infoEl.textContent = 'Previsão meteorológica (Visual Crossing).';
+                    weather = vc.days;
+                    await upsertRainProbabilities(vc.days);
                 } else {
-                    const attempted = `Coordenadas tentadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-                    const cepMsg = (cepFeedback && !cepFeedback.classList.contains('d-none')) ? (' / ' + (cepFeedback.textContent || '').trim()) : '';
+                    populateWeatherStrip([], range, refDate);
                     if (infoEl) infoEl.textContent = '';
                     console.debug('Weather unavailable for', { start, end, lat, lon, cepFeedback: cepFeedback && cepFeedback.textContent });
                 }
@@ -2345,7 +2329,7 @@ export function init(appStore, bootstrapOverride) {
             console.warn('Failed to compute weather percentages', e);
         }
 
-    // Se houver dados do Visual Crossing, preenche também o cabeçalho com o clima de hoje
+    // Se houver dados climáticos, preenche também o cabeçalho com o clima de hoje
         try {
             const homeEl = document.getElementById('home-weather');
             if (homeEl && weather && weather.length) {
