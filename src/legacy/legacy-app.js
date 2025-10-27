@@ -1089,13 +1089,22 @@ export function init(appStore, bootstrapOverride) {
         }
     }
 
-    async function runWeatherDiagnostics(apiKeyValue) {
+    async function runWeatherDiagnostics(apiKeyValue, referenceISO) {
         const lat = -23.55;
         const lon = -46.63;
-        const today = getTodayString();
+        const normalizedReference = (() => {
+            const raw = (referenceISO || '').toString().trim();
+            if (!raw) return getTodayString();
+            const short = raw.slice(0, 10);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(short)) return short;
+            const parsed = new Date(raw);
+            if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+            return getTodayString();
+        })();
         const lines = [];
+        lines.push(`Data utilizada: ${normalizedReference}`);
 
-        const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${today}&end_date=${today}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
+        const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${normalizedReference}&end_date=${normalizedReference}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
         lines.push('[Open-Meteo]');
         try {
             const res = await fetch(openMeteoUrl);
@@ -1125,7 +1134,7 @@ export function init(appStore, bootstrapOverride) {
 
         const maskedKey = apiKeyValue.length <= 6 ? apiKeyValue : `${apiKeyValue.slice(0, 4)}…${apiKeyValue.slice(-2)}`;
         lines.push(`Chave usada: ${maskedKey}`);
-        const vcUrl = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}/${today}/${today}?unitGroup=metric&include=days&elements=datetime,conditions,precipprob&key=${encodeURIComponent(apiKeyValue)}&contentType=json`;
+    const vcUrl = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(lat)},${encodeURIComponent(lon)}/${normalizedReference}/${normalizedReference}?unitGroup=metric&include=days&elements=datetime,conditions,precipprob&key=${encodeURIComponent(apiKeyValue)}&contentType=json`;
         try {
             const res = await fetch(vcUrl);
             lines.push(`Status: ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
@@ -1163,7 +1172,8 @@ export function init(appStore, bootstrapOverride) {
             }
             weatherTestResults.textContent = 'Executando diagnósticos...';
             weatherTestModal.show();
-            const report = await runWeatherDiagnostics(key);
+            const referenceDate = statsDate && statsDate.value ? statsDate.value : '';
+            const report = await runWeatherDiagnostics(key, referenceDate);
             weatherTestResults.textContent = report;
         });
     }
