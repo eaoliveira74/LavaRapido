@@ -1104,7 +1104,7 @@ export function init(appStore, bootstrapOverride) {
         const lines = [];
         lines.push(`Data utilizada: ${normalizedReference}`);
 
-        const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${normalizedReference}&end_date=${normalizedReference}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
+    const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${normalizedReference}&end_date=${normalizedReference}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean,precipitation_sum&timezone=auto`;
         lines.push('[Open-Meteo]');
         try {
             const res = await fetch(openMeteoUrl);
@@ -1115,7 +1115,9 @@ export function init(appStore, bootstrapOverride) {
                 lines.push(`Dias retornados: ${days}`);
                 if (days > 0) {
                     const code = Array.isArray(data.daily.weathercode) ? data.daily.weathercode[0] : 'n/d';
-                    lines.push(`Primeiro dia: ${data.daily.time[0]} · Código: ${code}`);
+                    const precipSum = Array.isArray(data.daily.precipitation_sum) ? data.daily.precipitation_sum[0] : null;
+                    const precipLabel = precipSum != null ? `${precipSum} mm` : 'n/d';
+                    lines.push(`Primeiro dia: ${data.daily.time[0]} · Código: ${code} · Precip: ${precipLabel}`);
                 }
             } else {
                 const text = await res.text();
@@ -1146,7 +1148,8 @@ export function init(appStore, bootstrapOverride) {
                     lines.push(`Dias retornados: ${days}`);
                     if (days > 0) {
                         const first = data.days[0] || {};
-                        lines.push(`Primeiro dia: ${first.datetime || 'n/d'} · Condição: ${(first.conditions || 'n/d')} · PrecipProb: ${first.precipprob ?? 'n/d'}`);
+                        const precipLabel = first.precip != null ? `${first.precip} mm` : 'n/d';
+                        lines.push(`Primeiro dia: ${first.datetime || 'n/d'} · Condição: ${(first.conditions || 'n/d')} · PrecipProb: ${first.precipprob ?? 'n/d'} · Precip: ${precipLabel}`);
                     }
                 } catch (e) {
                     lines.push(`Corpo: ${(raw || '').slice(0, 280) || '(vazio)'}`);
@@ -1338,16 +1341,25 @@ export function init(appStore, bootstrapOverride) {
             const conditionText = normalizeConditionLabel(day.conditionSimple || day.label || day.conditions || '');
             const displayCondition = displayConditionLabel(conditionText);
             const iconSvg = iconSvgForCondition(conditionText);
-            const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
+            const precipProb = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
+            const precipMm = (() => {
+                if (day.precip == null) return null;
+                const num = Number(day.precip);
+                if (Number.isNaN(num)) return null;
+                return Math.round(num * 10) / 10;
+            })();
             const entry = document.createElement('div');
             entry.className = 'weather-date-entry';
             const longDate = formatDatePtBr(iso);
-            const precipDetail = (precip != null && !Number.isNaN(precip)) ? `${precip}% chuva` : '';
+            const precipDetails = [];
+            if (precipMm != null) precipDetails.push(`${precipMm} mm`);
+            if (precipProb != null && !Number.isNaN(precipProb)) precipDetails.push(`${precipProb}% chuva`);
+            const precipDetail = precipDetails.join(' · ');
             const safeCondition = displayCondition || 'Condição não informada';
             const iconMarkup = iconSvg || '<span class="date-icon-fallback" aria-hidden="true">?</span>';
             entry.innerHTML = `<div class="date-icon">${iconMarkup}</div><div class="date-label">${label}</div>${precipDetail ? `<div class="date-extra">${precipDetail}</div>` : ''}`;
             const titleParts = [longDate, safeCondition];
-            if (precipDetail) titleParts.push(precipDetail);
+            if (precipDetail) titleParts.push(precipDetail.replace(' · ', ' / '));
             const descriptor = titleParts.filter(Boolean).join(' · ');
             entry.title = descriptor;
             entry.setAttribute('aria-label', descriptor);
@@ -1590,7 +1602,8 @@ export function init(appStore, bootstrapOverride) {
                         tempmin: (d.tempmin != null ? d.tempmin : null),
                         feelslikemax: (d.feelslikemax != null ? d.feelslikemax : null),
                         feelslikemin: (d.feelslikemin != null ? d.feelslikemin : null),
-                        precipprob: (d.precipprob != null ? d.precipprob : null)
+                        precipprob: (d.precipprob != null ? d.precipprob : null),
+                        precip: (d.precip != null ? d.precip : null)
                     })),
                     alerts: [],
                     source: 'open-meteo'
@@ -1650,6 +1663,21 @@ export function init(appStore, bootstrapOverride) {
                 const feelsMax = (day.feelslikemax != null) ? Math.round(day.feelslikemax) : null;
                 const feelsMin = (day.feelslikemin != null) ? Math.round(day.feelslikemin) : null;
                 const precipProb = (day.precipprob != null) ? Math.round(day.precipprob) : null;
+                const precipMm = (() => {
+                    if (day.precip == null) return null;
+                    const num = Number(day.precip);
+                    if (Number.isNaN(num)) return null;
+                    return Math.round(num * 10) / 10;
+                })();
+                const extraParts = [];
+                if (feelsMax != null || feelsMin != null) {
+                    extraParts.push(`Sensação ${feelsMax != null ? feelsMax : tmax}°/${feelsMin != null ? feelsMin : tmin}°`);
+                }
+                const precipParts = [];
+                if (precipMm != null) precipParts.push(`${precipMm} mm`);
+                if (precipProb != null) precipParts.push(`${precipProb}% chuva`);
+                if (precipParts.length) extraParts.push(precipParts.join(' · '));
+                const extraText = extraParts.length ? ` · ${extraParts.join(' · ')}` : '';
                 el.innerHTML = `
                     <div class="title">${label}</div>
                     <div class="d-flex align-items-center gap-2 mt-1">
@@ -1657,11 +1685,13 @@ export function init(appStore, bootstrapOverride) {
                         <div>
                             <div class="temp"><strong>Máx ${tmax}°C</strong></div>
                             <div class="temp text-secondary">Min ${tmin}°C</div>
-                            <div class="cond">${condDisplay}${(feelsMax!=null||feelsMin!=null) ? ` · Sensação ${feelsMax!=null?feelsMax:tmax}°/${feelsMin!=null?feelsMin:tmin}°` : ''}${precipProb!=null ? ` · ${precipProb}% chuva` : ''}</div>
+                            <div class="cond">${condDisplay}${extraText}</div>
                         </div>
                     </div>
                 `;
-                el.setAttribute('title', `${label}: ${cond} — Máx ${tmax}°C · Min ${tmin}°C`);
+                const tooltipParts = [`${label}: ${cond}`, `Máx ${tmax}°C · Min ${tmin}°C`];
+                if (precipParts.length) tooltipParts.push(precipParts.join(' / '));
+                el.setAttribute('title', tooltipParts.filter(Boolean).join(' · '));
             };
 
             renderCard(todayEl, t0, 'Hoje');
@@ -1677,7 +1707,7 @@ export function init(appStore, bootstrapOverride) {
     async function fetchWeatherSummary(startDate, endDate, lat = -23.55, lon = -46.63) {
     // Resumo diário do Open-Meteo com weathercode e aproximação de sensação térmica
     // Observação: apparent_temperature_max/min do Open-Meteo já aproxima a sensação térmica
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_mean,precipitation_sum&timezone=auto`;
         try {
             const res = await fetch(url);
             if (!res.ok) {
@@ -1712,7 +1742,11 @@ export function init(appStore, bootstrapOverride) {
             const appMax = (j.daily && j.daily.apparent_temperature_max) || [];
             const appMin = (j.daily && j.daily.apparent_temperature_min) || [];
             const precipProb = (j.daily && j.daily.precipitation_probability_mean) || [];
+            const precipSum = (j.daily && j.daily.precipitation_sum) || [];
             const mapped = days.map((d, i) => ({ date: d, ...codeToLabelAndIcon(codes[i] || -1), tempmax: tmax[i] ?? null, tempmin: tmin[i] ?? null, feelslikemax: appMax[i] ?? null, feelslikemin: appMin[i] ?? null, precipprob: precipProb[i] ?? null }));
+            mapped.forEach((entry, idx) => {
+                if (precipSum[idx] != null) entry.precip = precipSum[idx];
+            });
             if (typeof window !== 'undefined') {
                 window.__lastWeatherFetch = {
                     transport: 'open-meteo',
@@ -2168,7 +2202,17 @@ export function init(appStore, bootstrapOverride) {
                 const condition = normalizeConditionLabel(day.conditionSimple || day.label || day.conditions || '');
                 const conditionDisplay = displayConditionLabel(condition);
                 const iconSvg = iconSvgForCondition(condition);
-                const precip = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
+                const precipProb = (day.precipprob != null) ? Math.round(Number(day.precipprob)) : null;
+                const precipMm = (() => {
+                    if (day.precip == null) return null;
+                    const num = Number(day.precip);
+                    if (Number.isNaN(num)) return null;
+                    return Math.round(num * 10) / 10;
+                })();
+                const precipDetailParts = [];
+                if (precipMm != null) precipDetailParts.push(`${precipMm} mm`);
+                if (precipProb != null && !Number.isNaN(precipProb)) precipDetailParts.push(`${precipProb}% chuva`);
+                const precipDetail = precipDetailParts.join(' · ');
 
                 const card = document.createElement('div');
                 card.className = 'weather-strip-entry';
@@ -2176,10 +2220,10 @@ export function init(appStore, bootstrapOverride) {
                     <div class="weather-strip-icon">${iconSvg || '<span class="date-icon-fallback" aria-hidden="true">?</span>'}</div>
                     <div class="weather-strip-date">${displayDate}</div>
                     <div class="weather-strip-condition">${conditionDisplay}</div>
-                    ${precip != null && !Number.isNaN(precip) ? `<div class="weather-strip-precip">${precip}% chuva</div>` : ''}
+                    ${precipDetail ? `<div class="weather-strip-precip">${precipDetail}</div>` : ''}
                 `;
                 const tooltipParts = [displayDate, condition];
-                if (precip != null && !Number.isNaN(precip)) tooltipParts.push(`${precip}% chance de chuva`);
+                if (precipDetailParts.length) tooltipParts.push(precipDetailParts.join(' / '));
                 card.title = tooltipParts.filter(Boolean).join(' · ');
                 card.setAttribute('role', 'listitem');
                 card.setAttribute('aria-label', card.title);
