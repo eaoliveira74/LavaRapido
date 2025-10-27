@@ -1406,7 +1406,8 @@ export function init(appStore, bootstrapOverride) {
                     lat: json?.latitude != null ? json.latitude : parseFloat(lat),
                     lon: json?.longitude != null ? json.longitude : parseFloat(lon),
                     days,
-                    alerts
+                    alerts,
+                    source: 'visual-crossing-direct'
                 },
                 url
             };
@@ -1420,6 +1421,7 @@ export function init(appStore, bootstrapOverride) {
         if (key) {
             const direct = await fetchVisualCrossingDirect(key, lat, lon, startDate, endDate);
             if (direct?.ok && direct.data) {
+                if (!direct.data.source) direct.data.source = 'visual-crossing-direct';
                 if (typeof window !== 'undefined') {
                     window.__lastWeatherFetch = {
                         transport: 'visual-crossing-direct',
@@ -1473,6 +1475,7 @@ export function init(appStore, bootstrapOverride) {
                 return null;
             }
             const payload = await res.json();
+            if (payload && !payload.source) payload.source = 'visual-crossing-proxy';
             if (payload && !Array.isArray(payload.alerts)) payload.alerts = [];
             if (typeof window !== 'undefined') {
                 window.__lastWeatherFetch = {
@@ -1520,19 +1523,25 @@ export function init(appStore, bootstrapOverride) {
         if (cache[key] && (now - (cache[key].ts || 0) < WEATHER_CACHE_TTL)) {
             const cachedEntry = cache[key].data || null;
             if (cachedEntry && !Array.isArray(cachedEntry.alerts)) cachedEntry.alerts = [];
-            if (typeof window !== 'undefined') {
-                window.__lastWeatherFetch = {
-                    transport: 'two-day-cache',
-                    ok: true,
-                    cached: true,
-                    lat,
-                    lon,
-                    startDate: start,
-                    endDate: tomorrow,
-                    days: Array.isArray(cachedEntry?.days) ? cachedEntry.days.length : null
-                };
+            const cachedSource = (cachedEntry && typeof cachedEntry.source === 'string') ? cachedEntry.source : '';
+            const hasVisualPreference = !!getStoredVisualCrossingKey();
+            const cacheIsVisual = cachedSource.startsWith('visual-crossing');
+            // Prioriza Visual Crossing: se o cache veio de fallback e agora há chave cadastral, refaz a busca.
+            if (!hasVisualPreference || cacheIsVisual) {
+                if (typeof window !== 'undefined') {
+                    window.__lastWeatherFetch = {
+                        transport: 'two-day-cache',
+                        ok: true,
+                        cached: true,
+                        lat,
+                        lon,
+                        startDate: start,
+                        endDate: tomorrow,
+                        days: Array.isArray(cachedEntry?.days) ? cachedEntry.days.length : null
+                    };
+                }
+                return cachedEntry;
             }
-            return cachedEntry;
         }
     // Tenta primeiro o proxy do Visual Crossing
         let data = null;
@@ -1541,6 +1550,7 @@ export function init(appStore, bootstrapOverride) {
             if (vc && vc.days) {
                 data = vc;
                 if (data && !Array.isArray(data.alerts)) data.alerts = [];
+                if (!data.source) data.source = 'visual-crossing-proxy';
                 if (typeof window !== 'undefined') {
                     window.__lastWeatherFetch = {
                         transport: 'visual-crossing',
@@ -1572,7 +1582,8 @@ export function init(appStore, bootstrapOverride) {
                         feelslikemin: (d.feelslikemin != null ? d.feelslikemin : null),
                         precipprob: (d.precipprob != null ? d.precipprob : null)
                     })),
-                    alerts: []
+                    alerts: [],
+                    source: 'open-meteo'
                 };
                 if (typeof window !== 'undefined') {
                     window.__lastWeatherFetch = {
