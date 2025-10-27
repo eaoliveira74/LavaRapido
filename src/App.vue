@@ -53,7 +53,7 @@
         <div class="role-selection-layout">
           <section class="card role-selection-promo p-4">
             <div class="d-flex flex-column gap-2">
-              <h2 class="card-title h4 mb-1">Bem-vindo, cliente!</h2>
+              <h2 class="card-title h4 mb-1">Bem-vindo</h2>
               <p class="card-text text-light">
                 Agende o melhor horário para o seu veículo, acompanhe a previsão do tempo e fique tranquilo com nossas atualizações instantâneas.
               </p>
