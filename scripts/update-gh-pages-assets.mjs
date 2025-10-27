@@ -30,6 +30,17 @@ async function copyManifest() {
   }
 }
 
+async function annotateManifest(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf-8');
+    const manifest = JSON.parse(raw);
+    manifest._comentario = 'Este manifest relaciona os arquivos de entrada do Vite aos bundles usados em produção. Ele é sobrescrito automaticamente pelo script scripts/update-gh-pages-assets.mjs durante o build.';
+    await fs.writeFile(filePath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf-8');
+  } catch (err) {
+    console.warn('Não foi possível anotar manifest.json com o comentário esperado:', err.message || err);
+  }
+}
+
 async function copyAssets() {
   await fs.mkdir(targetAssetsDir, { recursive: true });
   const entries = await fs.readdir(distAssetsDir);
@@ -50,6 +61,7 @@ async function main() {
   await cleanTarget();
   await copyAssets();
   await copyManifest();
+  await annotateManifest(path.join(targetDir, 'manifest.json'));
   console.log('gh-pages assets synchronized successfully.');
 }
 
