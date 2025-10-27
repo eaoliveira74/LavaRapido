@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Script utilitário que inicia backend e frontend locais (se preciso) e roda os testes E2E do Playwright.
 import { spawn } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
 import http from 'node:http'
