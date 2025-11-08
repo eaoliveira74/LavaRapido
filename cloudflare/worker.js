@@ -1,6 +1,12 @@
 // Cloudflare Worker — backend completo (API + D1 + R2 + Visual Weather)
+// ---------------------------------------------------------------------------------
+// Este worker serve como a camada de API do sistema: expõe rotas REST, autentica o
+// painel administrativo, coordena uploads no R2 e persiste dados no D1. A maioria
+// das rotas retorna JSON e precisa responder a chamadas do front-end estático,
+// então as respostas incluem cabeçalhos de CORS liberando os métodos utilizados.
 
 function json(data, status = 200, extraHeaders) {
+  // Envelopa objetos em uma Response JSON com cabeçalhos de CORS consistentes
   const h = new Headers({ 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS', 'access-control-allow-headers': 'Content-Type, Authorization' });
   if (extraHeaders) for (const [k, v] of Object.entries(extraHeaders)) h.set(k, v);
   return new Response(JSON.stringify(data), { status, headers: h });
@@ -17,6 +23,7 @@ async function sha256(str) {
 
 // Implementação mínima de JWT HS256 usando Web Crypto
 async function signJWT(payload, secret, expSec = 12 * 60 * 60) {
+  // Gera token HS256 em memória; usado somente para autenticação do painel admin
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const body = { ...payload, iat: now, exp: now + expSec };
@@ -31,6 +38,7 @@ async function signJWT(payload, secret, expSec = 12 * 60 * 60) {
 }
 
 async function verifyJWT(token, secret) {
+  // Valida token HS256 emitido pelo próprio worker (sem dependências externas)
   try {
     const [h, p, s] = token.split('.');
     if (!h || !p || !s) return null;
@@ -46,6 +54,7 @@ async function verifyJWT(token, secret) {
 }
 
 function corsPreflight(request) {
+  // Responde pré-flight de navegadores Chrome/Safari quando enviado OPTIONS
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS', 'access-control-allow-headers': 'Content-Type, Authorization' } });
   }
@@ -53,6 +62,7 @@ function corsPreflight(request) {
 }
 
 function normalizeCondition(text, precipprob) {
+  // Normaliza textos vindos da API para categorias simples usadas no dashboard
   try { const p = Number(precipprob || 0); if (!isNaN(p) && p >= 30) return 'Chuvoso'; } catch {}
   if (!text) return 'Indeterminado';
   const t = text.toLowerCase();
@@ -68,7 +78,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-  // Healthcheck
+  // Healthcheck: útil para monitoramento externo e testes sintéticos
     if (path === '/health') {
       try {
         const count = await env.DB.prepare('SELECT COUNT(1) as c FROM appointments').first();
@@ -76,7 +86,7 @@ export default {
       } catch { return ok({ status: 'ok', now: new Date().toISOString() }); }
     }
 
-  // Leitura estática a partir do R2: /uploads/<chave>
+  // Leitura direta a partir do R2: serve comprovantes via link público temporário
     if (path.startsWith('/uploads/')) {
       const key = decodeURIComponent(path.replace(/^\/uploads\//, ''));
       const obj = await env.UPLOADS.get(key);
@@ -86,7 +96,7 @@ export default {
       return new Response(obj.body, { status: 200, headers: h });
     }
 
-  // Login do administrador
+  // Login do administrador — emite JWT mantido inteiramente no worker
     if (path === '/api/admin/login' && request.method === 'POST') {
       try {
         const { password } = await request.json();
@@ -98,7 +108,7 @@ export default {
       } catch { return bad('invalid request', 400); }
     }
 
-  // Middleware: autenticação para rotas administrativas
+  // Middleware: reaproveitado pelas rotas /api/admin/** para validar o token
     async function requireAdmin() {
       const auth = request.headers.get('authorization') || '';
       const parts = auth.split(' ');
@@ -108,7 +118,7 @@ export default {
       return payload;
     }
 
-  // Cria agendamento (multipart)
+  // Cria agendamento (multipart) — aceita comprovante PDF opcional salvo no R2
     if (path === '/api/appointments' && request.method === 'POST') {
       try {
         const form = await request.formData();
@@ -148,7 +158,7 @@ export default {
       }
     }
 
-  // Lista agendamentos (admin)
+  // Lista completa de agendamentos (admin) com link resolvido para comprovante
     if (path === '/api/appointments' && request.method === 'GET') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -157,13 +167,13 @@ export default {
       return ok(items);
     }
 
-  // Lista pública de agendamentos
+  // Lista pública resumida — usada para bloquear horários no front-end
     if (path === '/api/appointments/public' && request.method === 'GET') {
       const rs = await env.DB.prepare(`SELECT id, nome_cliente as nomeCliente, servico_id as servicoId, data, horario, status FROM appointments`).all();
       return ok(rs?.results || []);
     }
 
-  // Visualiza comprovante (admin)
+  // Visualiza comprovante (admin) — streamea o PDF direto do R2
     if (path.match(/^\/api\/appointments\/.+\/comprovante$/) && request.method === 'GET') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -177,7 +187,7 @@ export default {
       return new Response(obj.body, { status: 200, headers });
     }
 
-  // Confirma agendamento (admin)
+  // Confirma agendamento (admin) — muda status e retorna registro completo
     if (path.match(/^\/api\/appointments\/.+\/confirm$/) && request.method === 'POST') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -189,7 +199,7 @@ export default {
       return ok(row);
     }
 
-  // Marca agendamento como concluído (admin)
+  // Marca agendamento como concluído (admin) e acumula estatísticas diárias
     if (path.match(/^\/api\/appointments\/.+\/complete$/) && request.method === 'POST') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -218,7 +228,7 @@ export default {
       return ok(row);
     }
 
-  // Exclui agendamento (admin)
+  // Exclui agendamento (admin) — remove registro e comprovante associado
     if (path.match(/^\/api\/appointments\/.+$/) && request.method === 'DELETE') {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
@@ -229,8 +239,8 @@ export default {
       return ok({ ok: true });
     }
 
-  // Proxy do Visual Crossing (clima)
-  if (path === '/api/visual-weather' && request.method === 'GET') {
+  // Proxy do Visual Crossing (clima) — fornece dados uniformizados para o front
+    if (path === '/api/visual-weather' && request.method === 'GET') {
       const lat = url.searchParams.get('lat');
       const lon = url.searchParams.get('lon');
       const start = url.searchParams.get('start');
@@ -256,7 +266,7 @@ export default {
         feelslikemin: d.feelslikemin,
         precip: d.precip
       }));
-  // Melhor esforço: persiste probabilidade de chuva em stats_daily para alinhar gráficos e cards
+  // Persistência opcional: guarda probabilidade de chuva para dashboards históricos
       try {
         for (const d of days) {
           if (d && d.date && typeof d.precipprob !== 'undefined' && d.precipprob !== null) {
@@ -267,7 +277,7 @@ export default {
       return ok({ lat: j.latitude || parseFloat(lat), lon: j.longitude || parseFloat(lon), days });
     }
 
-  // Público: leitura das estatísticas diárias para os gráficos
+  // Público: leitura das estatísticas diárias consumidas pelos gráficos da home
     if (path === '/api/stats-daily' && request.method === 'GET') {
       const start = url.searchParams.get('start');
       const end = url.searchParams.get('end');
@@ -300,14 +310,14 @@ export default {
       const admin = await requireAdmin();
       if (!admin) return bad('unauthorized', 401);
       if (request.method === 'GET') {
-  // Consulta por intervalo: start=YYYY-MM-DD&end=YYYY-MM-DD
+        // Consulta por intervalo: start=YYYY-MM-DD&end=YYYY-MM-DD
         const start = url.searchParams.get('start');
         const end = url.searchParams.get('end');
         if (!start || !end) return bad('start and end required', 400);
         const rs = await env.DB.prepare(`SELECT date, cars_washed as carsWashed, total_revenue as totalRevenue, rain_probability as rainProbability FROM stats_daily WHERE date BETWEEN ? AND ? ORDER BY date ASC`).bind(start, end).all();
         return ok(rs?.results || []);
       } else if (request.method === 'POST') {
-  // Upsert para uma única data
+        // Upsert para uma única data; mantém dashboards em sincronia com ajustes manuais
         try {
           const body = await request.json();
           const date = body.date;
@@ -326,11 +336,11 @@ export default {
   ,
   // Limpeza agendada para comprovantes antigos no R2 (mais de 10 dias)
   async scheduled(controller, env, ctx) {
-  // Executa ambos: remoção de comprovantes e limpeza de agendamentos
+    // Executa ambos: remoção de comprovantes e limpeza de agendamentos
     ctx.waitUntil((async () => {
       try { await cleanupOldComprovantes(env, 10); } catch {}
       try {
-  // Usa a data de hoje em UTC (cron às 03:00 UTC ≈ 00:00 BRT)
+        // Usa a data de hoje em UTC (cron às 03:00 UTC ≈ 00:00 BRT)
         const today = new Date().toISOString().slice(0, 10);
         await pruneOldAppointments(env, today);
       } catch {}
@@ -340,6 +350,7 @@ export default {
 
 // Função auxiliar: remove comprovantes no R2 mais antigos que N dias e limpa referências no banco
 async function cleanupOldComprovantes(env, days = 10) {
+  // Percorre a lista de comprovantes paginada pelo R2 e apaga o que venceu o prazo
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   let cursor = undefined;
   let removed = 0;
@@ -363,12 +374,15 @@ async function cleanupOldComprovantes(env, days = 10) {
 // Função auxiliar: apaga agendamentos anteriores a uma data (data < beforeDate)
 // Também apaga os comprovantes correspondentes no R2
 async function pruneOldAppointments(env, beforeDate /* format YYYY-MM-DD */) {
-  // Busca primeiro as linhas que serão excluídas
-  const rows = await env.DB.prepare(`SELECT id, comprovante_key as key FROM appointments WHERE data < ?`).bind(beforeDate).all();
+  // Recupera candidatos, mas preserva agendamentos concluídos/confirmados para não perder histórico
+  const rows = await env.DB.prepare(`SELECT id, status, comprovante_key as key FROM appointments WHERE data < ?`).bind(beforeDate).all();
   const list = rows?.results || [];
+  const SAFE_STATUSES = new Set(['Confirmado', 'Concluído']);
   let deleted = 0;
   let removedProofs = 0;
+  let skipped = 0;
   for (const r of list) {
+    if (SAFE_STATUSES.has(r.status)) { skipped++; continue; }
     if (r.key) {
       try { await env.UPLOADS.delete(r.key); removedProofs++; } catch {}
     }
@@ -377,5 +391,5 @@ async function pruneOldAppointments(env, beforeDate /* format YYYY-MM-DD */) {
       deleted++;
     } catch {}
   }
-  return { deleted, removedProofs };
+  return { deleted, removedProofs, skipped };
 }
