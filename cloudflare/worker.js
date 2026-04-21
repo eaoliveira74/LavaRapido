@@ -173,6 +173,13 @@ export default {
       return ok(rs?.results || []);
     }
 
+  // Lista pública de agendamentos futuros — a partir da data corrente
+    if (path === '/api/appointments/future' && request.method === 'GET') {
+      const today = new Date().toISOString().slice(0, 10);
+      const rs = await env.DB.prepare(`SELECT id, nome_cliente as nomeCliente, servico_id as servicoId, data, horario, status FROM appointments WHERE data >= ? ORDER BY data ASC, horario ASC`).bind(today).all();
+      return ok(rs?.results || []);
+    }
+
   // Visualiza comprovante (admin) — streamea o PDF direto do R2
     if (path.match(/^\/api\/appointments\/.+\/comprovante$/) && request.method === 'GET') {
       const admin = await requireAdmin();
