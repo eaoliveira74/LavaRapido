@@ -25,3 +25,5 @@ dist-ssr
 
 # Ignore uploaded user files stored by the dev server
 /server/uploads/
+# Ignore Wrangler local state and cache
+.wrangler/
