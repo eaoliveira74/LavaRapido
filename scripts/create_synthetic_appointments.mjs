@@ -8,16 +8,24 @@ fs.writeFileSync(tmp, Buffer.from(base, 'base64'));
 const services = ['lavagem-simples','lavagem-completa','enceramento','lavagem-motor'];
 
 async function postAppointments() {
-  for (let i=0;i<10;i++){
-    const dt = new Date(); dt.setDate(dt.getDate()-i);
-    const dateStr = dt.toISOString().split('T')[0];
+  const schedule = [
+    { nome: 'Cliente Sintético A', telefone: '(11) 98765-4321', servico: 'lavagem-simples', data: '2026-04-21', horario: '09:00' },
+    { nome: 'Cliente Sintético B', telefone: '(11) 98765-4322', servico: 'lavagem-completa', data: '2026-04-22', horario: '10:30' },
+    { nome: 'Cliente Sintético C', telefone: '(11) 98765-4323', servico: 'enceramento', data: '2026-04-23', horario: '14:00' },
+    { nome: 'Cliente Sintético D', telefone: '(11) 98765-4324', servico: 'lavagem-motor', data: '2026-04-24', horario: '11:30' },
+    { nome: 'Cliente Sintético E', telefone: '(11) 98765-4325', servico: 'lavagem-completa', data: '2026-04-25', horario: '09:30' },
+    { nome: 'Cliente Sintético F', telefone: '(11) 98765-4326', servico: 'lavagem-simples', data: '2026-04-25', horario: '15:00' }
+  ];
+
+  for (let i = 0; i < schedule.length; i++) {
+    const item = schedule[i];
     const form = new FormData();
-    form.append('nomeCliente', `Teste ${i}`);
-    form.append('telefoneCliente', `(11) 99999-000${i}`);
-    form.append('servicoId', services[i % services.length]);
-    form.append('data', dateStr);
-    form.append('horario', '11:00');
-    form.append('observacoes', 'sintetico');
+    form.append('nomeCliente', item.nome);
+    form.append('telefoneCliente', item.telefone);
+    form.append('servicoId', item.servico);
+    form.append('data', item.data);
+    form.append('horario', item.horario);
+    form.append('observacoes', 'Agendamento sintético');
     form.append('comprovante', fs.createReadStream(tmp));
 
     try {
@@ -27,10 +35,9 @@ async function postAppointments() {
     } catch (e) {
       console.error('error', e.message);
     }
-  // pequeno atraso
-    await new Promise(r=>setTimeout(r,200));
+    await new Promise(r => setTimeout(r, 200));
   }
-  try { fs.unlinkSync(tmp); } catch(e){}
+  try { fs.unlinkSync(tmp); } catch (e) {}
 }
 
 postAppointments().then(()=>console.log('done')).catch(err=>console.error(err));

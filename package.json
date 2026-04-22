@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:ui": "playwright test tests/ui.spec.js --project=chromium --timeout=20000",
     "test:ui:headed": "playwright test tests/ui.spec.js --project=chromium --headed --timeout=20000",
-    "test:e2e": "node ./scripts/run-e2e.mjs"
+    "test:e2e": "node ./scripts/run-e2e.mjs",
+    "seed:d1": "node ./scripts/seed_cloudflare_d1.mjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.3",

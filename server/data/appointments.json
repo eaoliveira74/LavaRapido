@@ -178,5 +178,77 @@
     "status": "Reservado",
     "comprovantePath": "uploads/1760274401998-86125874.pdf",
     "createdAt": "2025-10-12T13:06:42.002Z"
+  },
+  {
+    "id": "synth-20260421-1",
+    "nomeCliente": "Cliente Sintético A",
+    "telefoneCliente": "(11) 98765-4321",
+    "servicoId": "lavagem-simples",
+    "horario": "09:00",
+    "data": "2026-04-21",
+    "observacoes": "Agendamento sintético",
+    "status": "Pendente",
+    "comprovantePath": null,
+    "createdAt": "2026-04-21T08:00:00.000Z"
+  },
+  {
+    "id": "synth-20260422-1",
+    "nomeCliente": "Cliente Sintético B",
+    "telefoneCliente": "(11) 98765-4322",
+    "servicoId": "lavagem-completa",
+    "horario": "10:30",
+    "data": "2026-04-22",
+    "observacoes": "Agendamento sintético",
+    "status": "Reservado",
+    "comprovantePath": null,
+    "createdAt": "2026-04-22T09:15:00.000Z"
+  },
+  {
+    "id": "synth-20260423-1",
+    "nomeCliente": "Cliente Sintético C",
+    "telefoneCliente": "(11) 98765-4323",
+    "servicoId": "enceramento",
+    "horario": "14:00",
+    "data": "2026-04-23",
+    "observacoes": "Agendamento sintético",
+    "status": "Pendente",
+    "comprovantePath": null,
+    "createdAt": "2026-04-23T12:30:00.000Z"
+  },
+  {
+    "id": "synth-20260424-1",
+    "nomeCliente": "Cliente Sintético D",
+    "telefoneCliente": "(11) 98765-4324",
+    "servicoId": "lavagem-motor",
+    "horario": "11:30",
+    "data": "2026-04-24",
+    "observacoes": "Agendamento sintético",
+    "status": "Confirmado",
+    "comprovantePath": null,
+    "createdAt": "2026-04-24T10:10:00.000Z"
+  },
+  {
+    "id": "synth-20260425-1",
+    "nomeCliente": "Cliente Sintético E",
+    "telefoneCliente": "(11) 98765-4325",
+    "servicoId": "lavagem-completa",
+    "horario": "09:30",
+    "data": "2026-04-25",
+    "observacoes": "Agendamento sintético",
+    "status": "Reservado",
+    "comprovantePath": null,
+    "createdAt": "2026-04-25T08:45:00.000Z"
+  },
+  {
+    "id": "synth-20260425-2",
+    "nomeCliente": "Cliente Sintético F",
+    "telefoneCliente": "(11) 98765-4326",
+    "servicoId": "lavagem-simples",
+    "horario": "15:00",
+    "data": "2026-04-25",
+    "observacoes": "Agendamento sintético",
+    "status": "Pendente",
+    "comprovantePath": null,
+    "createdAt": "2026-04-25T13:20:00.000Z"
   }
 ]
