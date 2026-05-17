@@ -2615,7 +2615,9 @@ export function init(appStore, bootstrapOverride) {
             const feedback = document.getElementById('admin-password-feedback');
             feedback.classList.add('d-none');
             const adminPasswordModalEl = document.getElementById('admin-password-modal');
-            const adminPasswordModal = bootstrap.Modal.getInstance(adminPasswordModalEl);
+            const adminPasswordModal = (bootstrap.Modal.getOrCreateInstance)
+                ? bootstrap.Modal.getOrCreateInstance(adminPasswordModalEl)
+                : bootstrap.Modal.getInstance(adminPasswordModalEl) || new bootstrap.Modal(adminPasswordModalEl);
 
             // Primeiro tenta autenticar no backend
             const backend = getBackendBase();
