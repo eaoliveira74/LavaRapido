@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Sistema de Agendamento - Lava Rápido Versátil</title>
+    <script>
+      // Unregister any Service Worker and clear caches once to avoid serving stale bundles.
+      (function(){
+        try {
+          const markerKey = 'lava_rapido_sw_cleared_v';
+          const version = Date.now().toString();
+          if (!localStorage.getItem(markerKey)) {
+            // unregister service workers
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(r => { try { r.unregister(); } catch(e){} });
+              }).catch(()=>{});
+            }
+            // clear caches
+            if (window.caches && window.caches.keys) {
+              caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(()=>{});
+            }
+            try { localStorage.setItem(markerKey, version); } catch(e){}
+            // reload to fetch fresh assets
+            setTimeout(() => { try { location.reload(true); } catch(e){ location.reload(); } }, 100);
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <link rel="manifest" href="/LavaRapido/manifest.json">
+    <meta name="theme-color" content="#0b1620">
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" crossorigin src="/LavaRapido/assets/index-CJ1pJUGm.js"></script>
+  </body>
+</html>
