@@ -1,7 +1,6 @@
 {
-  "_comentario": "Este manifest relaciona os arquivos de entrada do Vite aos bundles usados em produção. Ele é sobrescrito automaticamente pelo script scripts/update-gh-pages-assets.mjs durante o build.",
   "index.html": {
-    "file": "assets/index-SxSJHCoc.js",
+    "file": "assets/index-fAASfzzn.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -10,12 +9,13 @@
     ]
   },
   "src/main.js": {
-    "file": "assets/main-DoD6oM5F.js",
+    "file": "assets/main-DTKz9fvk.js",
     "name": "main",
     "src": "src/main.js",
     "isDynamicEntry": true,
     "css": [
       "assets/main-DCDpY7Jq.css"
     ]
-  }
+  },
+  "_comentario": "Este manifest relaciona os arquivos de entrada do Vite aos bundles usados em produção. Ele é sobrescrito automaticamente pelo script scripts/update-gh-pages-assets.mjs durante o build."
 }
