@@ -10,6 +10,8 @@ O que este Worker faz
   - GET /api/appointments/:id/comprovante (admin)
   - POST /api/appointments/:id/confirm (admin)
   - DELETE /api/appointments/:id (admin)
+  - POST /api/water-consumption
+  - GET /api/admin/water-consumption?start=YYYY-MM-DD&end=YYYY-MM-DD (admin)
   - GET /api/visual-weather?lat=..&lon=..&start=..&end=..
   - GET /uploads/<key>
   - GET /health

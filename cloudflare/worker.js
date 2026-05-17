@@ -180,6 +180,37 @@ export default {
       return ok(rs?.results || []);
     }
 
+  // Recebe histórico de consumo de água via POST
+    if (path === '/api/water-consumption' && request.method === 'POST') {
+      try {
+        const payload = await request.json();
+        const entries = Array.isArray(payload) ? payload : [payload];
+        let inserted = 0;
+        for (const item of entries) {
+          if (!item || typeof item !== 'object') continue;
+          const date = (item.date || item.data || item.day || '').toString().slice(0, 10);
+          const volume = Number(item.volume ?? item.volumeLiters ?? item.liters ?? item.value ?? 0);
+          if (!date || Number.isNaN(volume) || volume < 0.001) continue;
+          await env.DB.prepare(`INSERT INTO water_consumption (date, volume_liters, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(date) DO UPDATE SET volume_liters = volume_liters + excluded.volume_liters, updated_at = excluded.updated_at`).bind(date, volume, new Date().toISOString(), new Date().toISOString()).run();
+          inserted += 1;
+        }
+        return ok({ ok: true, inserted });
+      } catch (err) {
+        return bad('invalid request body', 400);
+      }
+    }
+
+  // Lista o histórico de consumo de água (admin)
+    if (path === '/api/admin/water-consumption' && request.method === 'GET') {
+      const admin = await requireAdmin();
+      if (!admin) return bad('unauthorized', 401);
+      const start = url.searchParams.get('start');
+      const end = url.searchParams.get('end');
+      if (!start || !end) return bad('start and end required', 400);
+      const rs = await env.DB.prepare(`SELECT date, volume_liters as volumeLiters FROM water_consumption WHERE date BETWEEN ? AND ? ORDER BY date ASC`).bind(start, end).all();
+      return ok(rs?.results || []);
+    }
+
   // Visualiza comprovante (admin) — streamea o PDF direto do R2
     if (path.match(/^\/api\/appointments\/.+\/comprovante$/) && request.method === 'GET') {
       const admin = await requireAdmin();
