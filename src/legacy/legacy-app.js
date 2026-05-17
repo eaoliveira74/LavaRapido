@@ -2611,7 +2611,10 @@ export function init(appStore, bootstrapOverride) {
 
     // Evento do botão de submissão do modal de senha
     document.getElementById('admin-password-submit').addEventListener('click', async () => {
+            // Diagnostic logs added to help trace why admin view doesn't open
+            console.debug('[admin] submit clicked');
             const input = document.getElementById('admin-password-input').value || '';
+            console.debug('[admin] input length', input.length);
             const feedback = document.getElementById('admin-password-feedback');
             feedback.classList.add('d-none');
             const adminPasswordModalEl = document.getElementById('admin-password-modal');
@@ -2622,13 +2625,24 @@ export function init(appStore, bootstrapOverride) {
             // Primeiro tenta autenticar no backend
             const backend = getBackendBase();
             try {
+                console.debug('[admin] attempting backend auth to', backend + '/api/admin/login');
                 const res = await fetch(`${backend}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: input }) });
+                console.debug('[admin] backend response status', res.status);
                 if (res.ok) {
                     const data = await res.json();
+                    console.debug('[admin] backend response body', data);
                     if (data && data.token) {
                         setAdminToken(data.token);
-                        adminPasswordModal.hide();
-                        switchView('admin');
+                        try {
+                            adminPasswordModal.hide();
+                        } catch (errHide) {
+                            console.warn('[admin] error hiding modal after backend auth', errHide);
+                        }
+                        try {
+                            switchView('admin');
+                        } catch (errView) {
+                            console.error('[admin] error switching view after backend auth', errView);
+                        }
                         return;
                     }
                 }
@@ -2638,13 +2652,27 @@ export function init(appStore, bootstrapOverride) {
             }
 
             // Alternativa: validação local do hash (uso offline/demo)
-            const hashed = await sha256Hex(input);
-            if (hashed === ADMIN_PASSWORD_HASH) {
-                    feedback.classList.add('d-none');
-                    adminPasswordModal.hide();
-                    switchView('admin');
-            } else {
-                    feedback.classList.remove('d-none');
+            try {
+                const hashed = await sha256Hex(input);
+                console.debug('[admin] local hash', hashed);
+                if (hashed === ADMIN_PASSWORD_HASH) {
+                        feedback.classList.add('d-none');
+                        try {
+                            adminPasswordModal.hide();
+                        } catch (errHide) {
+                            console.warn('[admin] error hiding modal after local check', errHide);
+                        }
+                        try {
+                            switchView('admin');
+                        } catch (errView) {
+                            console.error('[admin] error switching view after local check', errView);
+                        }
+                } else {
+                        feedback.classList.remove('d-none');
+                }
+            } catch (errHash) {
+                console.error('[admin] error computing hash or handling local check', errHash);
+                feedback.classList.remove('d-none');
             }
     });
 
