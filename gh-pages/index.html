@@ -33,6 +33,19 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" crossorigin src="/LavaRapido/assets/index-CJ1pJUGm.js"></script>
+    <script>
+      // Load the module with a cache-busting query string so browsers/CDNs fetch latest build.
+      (function(){
+        try {
+          const base = '/LavaRapido/assets/index-CJ1pJUGm.js';
+          const url = base + '?v=' + Date.now();
+          const s = document.createElement('script');
+          s.type = 'module';
+          s.crossOrigin = 'anonymous';
+          s.src = url;
+          document.body.appendChild(s);
+        } catch(e) { console.error('Failed to load app bundle', e); }
+      })();
+    </script>
   </body>
 </html>
