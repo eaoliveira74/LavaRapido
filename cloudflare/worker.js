@@ -338,6 +338,41 @@ export default {
       }
     }
 
+    // Public ingestion endpoint: aceita POST com array de medições { date: YYYY-MM-DD, volume: number }
+    if (path === '/api/water-consumption' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const items = Array.isArray(body) ? body : [body];
+        if (!items.length) return bad('empty body', 400);
+        let count = 0;
+        const now = new Date().toISOString();
+        for (const it of items) {
+          const date = (it && (it.date || it.day || it.iso)) ? String(it.date || it.day || it.iso).slice(0,10) : null;
+          const volume = Number(it && (it.volume ?? it.liters ?? it.l)) || 0;
+          if (!date) continue;
+          await env.DB.prepare(`INSERT INTO water_consumption (date, volume_liters, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(date) DO UPDATE SET volume_liters = excluded.volume_liters, updated_at = excluded.updated_at`).bind(date, volume, now, now).run();
+          count++;
+        }
+        return ok({ ok: true, inserted: count });
+      } catch (e) {
+        return bad('invalid body', 400);
+      }
+    }
+
+    // Admin: leitura de consumo de água por intervalo (start,end)
+    if (path === '/api/admin/water-consumption') {
+      const admin = await requireAdmin();
+      if (!admin) return bad('unauthorized', 401);
+      if (request.method === 'GET') {
+        const start = url.searchParams.get('start');
+        const end = url.searchParams.get('end');
+        if (!start || !end) return bad('start and end required', 400);
+        const rs = await env.DB.prepare(`SELECT date, volume_liters as liters FROM water_consumption WHERE date BETWEEN ? AND ? ORDER BY date ASC`).bind(start, end).all();
+        return ok(rs?.results || []);
+      }
+      return bad('method not allowed', 405);
+    }
+
     return bad('Not found', 404);
   }
   ,
