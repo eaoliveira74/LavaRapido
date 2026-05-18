@@ -178,6 +178,7 @@
               <button id="show-appointments-btn" class="btn btn-cyan">Ver Agendamentos</button>
               <button id="show-services-btn" class="btn btn-secondary">Gerenciar Serviços</button>
               <button id="show-stats-btn" class="btn btn-outline-light">Estatísticas</button>
+                <button id="show-water-consumption-btn" class="btn btn-outline-info">Consumo de Água</button>
             </div>
           </div>
 
@@ -227,6 +228,39 @@
               <div id="stats-weather" class="small text-secondary"></div>
             </div>
           </div>
+        
+        <!-- Seção de Consumo de Água (Admin) -->
+        <div id="admin-water-consumption-section" class="card mt-4 d-none">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h3 class="card-title h5 mb-0">Consumo de Água</h3>
+              <div>
+                <button id="water-back-btn" class="btn btn-secondary">Voltar</button>
+              </div>
+            </div>
+            <div class="row g-3 mb-2 align-items-end justify-content-end">
+              <div class="col-auto">
+                <label for="water-range" class="form-label">Período:</label>
+                <select id="water-range" class="form-select form-select-sm compact-50 stats-ctrl">
+                  <option value="day">Diário</option>
+                  <option value="week">Semanal</option>
+                  <option value="month" selected>Mensal</option>
+                </select>
+              </div>
+              <div class="col-auto">
+                <label for="water-date" class="form-label">Data de referência:</label>
+                <input type="date" id="water-date" class="form-control form-control-sm compact-50" />
+              </div>
+              <div class="col-auto d-flex align-items-end">
+                <button id="water-refresh" class="btn btn-cyan">Atualizar</button>
+              </div>
+            </div>
+            <div class="mb-2">
+              <canvas id="water-chart"></canvas>
+            </div>
+            <div id="water-summary" class="small text-secondary"></div>
+          </div>
+        </div>
         </div>
 
         <!-- Seção de Lista de Agendamentos (Admin) -->

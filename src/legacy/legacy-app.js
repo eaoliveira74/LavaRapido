@@ -93,6 +93,15 @@ export function init(appStore, bootstrapOverride) {
   const servicesList = document.getElementById('services-list');
   const serviceForm = document.getElementById('service-form');
 
+    // Elementos da visão de consumo de água (Admin)
+    const waterConsumptionSection = document.getElementById('admin-water-consumption-section');
+    const waterConsumptionRange = document.getElementById('water-range');
+    const waterConsumptionDate = document.getElementById('water-date');
+    const waterConsumptionRefresh = document.getElementById('water-refresh');
+    const waterConsumptionBackBtn = document.getElementById('water-back-btn');
+    const waterChartEl = document.getElementById('water-chart');
+    let waterChart = null;
+
   // Elementos do Modal de Notificação do WhatsApp
   const whatsAppModalElement = document.getElementById('whatsapp-modal');
   const whatsAppModal = new bootstrap.Modal(whatsAppModalElement);
@@ -337,7 +346,7 @@ export function init(appStore, bootstrapOverride) {
 
     // (adiado) -- carregamento inicial de agendamentos públicos será feito após a definição da função
   
-  const renderAdminView = (activeTab = 'appointments') => {
+    const renderAdminView = (activeTab = 'appointments') => {
         if (adminActionButtons && !adminActionButtons.contains(logoutButton)) {
             adminActionButtons.appendChild(logoutButton);
         }
@@ -346,19 +355,26 @@ export function init(appStore, bootstrapOverride) {
       if (adminToken) fetchAdminAppointments().catch(() => {});
       renderAppointmentsTable();
       renderServicesList();
-      document.getElementById('admin-appointments-section').classList.toggle('d-none', activeTab !== 'appointments');
-      document.getElementById('admin-services-section').classList.toggle('d-none', activeTab !== 'services');
-            document.getElementById('admin-stats-section').classList.toggle('d-none', activeTab !== 'stats');
-      document.getElementById('show-appointments-btn').classList.toggle('btn-cyan', activeTab === 'appointments');
-      document.getElementById('show-appointments-btn').classList.toggle('btn-secondary', activeTab !== 'appointments');
-      document.getElementById('show-services-btn').classList.toggle('btn-cyan', activeTab === 'services');
-      document.getElementById('show-services-btn').classList.toggle('btn-secondary', activeTab !== 'services');
-            const showStatsBtn = document.getElementById('show-stats-btn');
-            if (showStatsBtn) {
-                showStatsBtn.classList.toggle('btn-cyan', activeTab === 'stats');
-                showStatsBtn.classList.toggle('btn-outline-light', activeTab !== 'stats');
-            }
-            if (activeTab === 'stats') initializeStats();
+    document.getElementById('admin-appointments-section').classList.toggle('d-none', activeTab !== 'appointments');
+    document.getElementById('admin-services-section').classList.toggle('d-none', activeTab !== 'services');
+        document.getElementById('admin-stats-section').classList.toggle('d-none', activeTab !== 'stats');
+    document.getElementById('admin-water-consumption-section')?.classList.toggle('d-none', activeTab !== 'water');
+    document.getElementById('show-appointments-btn').classList.toggle('btn-cyan', activeTab === 'appointments');
+    document.getElementById('show-appointments-btn').classList.toggle('btn-secondary', activeTab !== 'appointments');
+    document.getElementById('show-services-btn').classList.toggle('btn-cyan', activeTab === 'services');
+    document.getElementById('show-services-btn').classList.toggle('btn-secondary', activeTab !== 'services');
+        const showStatsBtn = document.getElementById('show-stats-btn');
+        if (showStatsBtn) {
+            showStatsBtn.classList.toggle('btn-cyan', activeTab === 'stats');
+            showStatsBtn.classList.toggle('btn-outline-light', activeTab !== 'stats');
+        }
+        const showWaterBtn = document.getElementById('show-water-consumption-btn');
+        if (showWaterBtn) {
+            showWaterBtn.classList.toggle('btn-cyan', activeTab === 'water');
+            showWaterBtn.classList.toggle('btn-secondary', activeTab !== 'water');
+        }
+        if (activeTab === 'stats') initializeStats();
+        if (activeTab === 'water') renderWaterConsumption().catch(()=>{});
   };
 
     // Busca agendamentos no backend (exige adminToken)
@@ -570,6 +586,8 @@ export function init(appStore, bootstrapOverride) {
   document.getElementById('show-services-btn').addEventListener('click', () => renderAdminView('services'));
     const showStatsBtn = document.getElementById('show-stats-btn');
     if (showStatsBtn) showStatsBtn.addEventListener('click', () => renderAdminView('stats'));
+    const showWaterBtn = document.getElementById('show-water-consumption-btn');
+    if (showWaterBtn) showWaterBtn.addEventListener('click', () => renderAdminView('water'));
   datePicker.addEventListener('change', updateAvailableTimes);
   
   [serviceSelect, timeSelect].forEach(el => {
@@ -2579,6 +2597,73 @@ export function init(appStore, bootstrapOverride) {
                     }
                 })();
             } catch (e) { console.warn('home forecast init failed', e); }
+
+            // Funções e handlers para a tela de Consumo de Água (admin)
+            async function renderWaterConsumption() {
+                if (!waterChartEl) return;
+                const range = (waterConsumptionRange && waterConsumptionRange.value) ? waterConsumptionRange.value : 'month';
+                const refDate = (waterConsumptionDate && waterConsumptionDate.value) ? waterConsumptionDate.value : getTodayString();
+                const computeBounds = (range, refDate) => {
+                    if (range === 'day') return { start: refDate, end: refDate };
+                    const d = new Date(refDate + 'T00:00:00');
+                    if (range === 'week') {
+                        const day = d.getDay();
+                        const diffToMon = (day + 6) % 7;
+                        const monday = new Date(d); monday.setDate(d.getDate() - diffToMon);
+                        const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+                        return { start: monday.toISOString().slice(0,10), end: sunday.toISOString().slice(0,10) };
+                    }
+                    if (range === 'month') {
+                        const y = d.getFullYear(); const m = d.getMonth();
+                        const first = new Date(Date.UTC(y, m, 1));
+                        const last = new Date(Date.UTC(y, m + 1, 0));
+                        return { start: first.toISOString().slice(0,10), end: last.toISOString().slice(0,10) };
+                    }
+                    return { start: refDate, end: refDate };
+                };
+                const { start, end } = computeBounds(range, refDate);
+                const backend = getBackendBase();
+                try {
+                    const url = new URL(`${backend}/api/admin/water-consumption`);
+                    url.searchParams.set('start', start);
+                    url.searchParams.set('end', end);
+                    const headers = {};
+                    if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
+                    const res = await fetch(url.toString(), { headers });
+                    if (!res.ok) {
+                        showAnnouncement('Falha ao carregar dados de consumo de água.','warning');
+                        return;
+                    }
+                    const payload = await res.json();
+                    if (!Array.isArray(payload) || payload.length === 0) {
+                        showAnnouncement('Nenhum dado de consumo disponível para o período selecionado.','warning');
+                        if (waterChart) { waterChart.data.labels = []; waterChart.data.datasets[0].data = []; waterChart.update(); }
+                        return;
+                    }
+                    const labels = payload.map(p => (p.date || p.iso || p.day || '').toString().slice(0,10));
+                    const data = payload.map(p => Number(p.liters ?? p.l ?? 0));
+                    if (typeof Chart === 'undefined') await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
+                    const ctx = waterChartEl.getContext ? waterChartEl.getContext('2d') : null;
+                    if (!ctx) return;
+                    if (!waterChart) {
+                        waterChart = new Chart(ctx, {
+                            type: 'line',
+                            data: { labels, datasets: [{ label: 'Litros', data, borderColor: '#1e40af', backgroundColor: 'rgba(30,64,175,0.12)', fill: true }] },
+                            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                        });
+                    } else {
+                        waterChart.data.labels = labels;
+                        waterChart.data.datasets[0].data = data;
+                        waterChart.update();
+                    }
+                } catch (err) {
+                    console.warn('Erro ao renderizar consumo de água', err);
+                    showAnnouncement('Erro ao carregar dados de consumo de água.','danger');
+                }
+            }
+
+            if (waterConsumptionRefresh) waterConsumptionRefresh.addEventListener('click', () => renderWaterConsumption().catch(()=>{}));
+            if (waterConsumptionBackBtn) waterConsumptionBackBtn.addEventListener('click', () => renderAdminView('appointments'));
 
             // Expor funções após todas as dependências estarem definidas
             try {
