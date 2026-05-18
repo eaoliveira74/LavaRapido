@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Sistema de Agendamento - Lava Rápido Versátil</title>
+    <script>
+      // One-time unregister service workers and clear caches to avoid stale bundles
+      (function(){
+        try {
+          const MARKER = 'lava_rapido_cache_cleared_v2';
+          if (!localStorage.getItem(MARKER)) {
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(()=>{});
+            }
+            if (window.caches && caches.keys) {
+              caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(()=>{});
+            }
+            try { localStorage.setItem(MARKER, String(Date.now())); } catch(e){}
+            // Slight delay then reload to get fresh assets
+            setTimeout(()=>{ try{ location.reload(true); }catch(e){ location.reload(); } }, 120);
+          }
+        } catch(e){}
+      })();
+    </script>
+    <link rel="manifest" href="/LavaRapido/manifest.json">
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // Load the currently built module with a cache-busting query string
+      (function(){
+        try{
+          const scriptName = '/LavaRapido/assets/index-lyPIW6Gm.js';
+          const s = document.createElement('script');
+          s.type = 'module';
+          s.crossOrigin = 'anonymous';
+          s.src = scriptName + '?v=' + Date.now();
+          document.body.appendChild(s);
+        }catch(e){ console.error('Failed to load app bundle', e); }
+      })();
+    </script>
+  </body>
+</html>
