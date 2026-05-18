@@ -348,24 +348,17 @@ export function init(appStore, bootstrapOverride) {
       renderServicesList();
       document.getElementById('admin-appointments-section').classList.toggle('d-none', activeTab !== 'appointments');
       document.getElementById('admin-services-section').classList.toggle('d-none', activeTab !== 'services');
-      document.getElementById('admin-stats-section').classList.toggle('d-none', activeTab !== 'stats');
-      document.getElementById('admin-water-consumption-section').classList.toggle('d-none', activeTab !== 'waterConsumption');
+            document.getElementById('admin-stats-section').classList.toggle('d-none', activeTab !== 'stats');
       document.getElementById('show-appointments-btn').classList.toggle('btn-cyan', activeTab === 'appointments');
       document.getElementById('show-appointments-btn').classList.toggle('btn-secondary', activeTab !== 'appointments');
       document.getElementById('show-services-btn').classList.toggle('btn-cyan', activeTab === 'services');
       document.getElementById('show-services-btn').classList.toggle('btn-secondary', activeTab !== 'services');
-      const showStatsBtn = document.getElementById('show-stats-btn');
-      if (showStatsBtn) {
-          showStatsBtn.classList.toggle('btn-cyan', activeTab === 'stats');
-          showStatsBtn.classList.toggle('btn-outline-light', activeTab !== 'stats');
-      }
-      const showWaterConsumptionBtn = document.getElementById('show-water-consumption-btn');
-      if (showWaterConsumptionBtn) {
-          showWaterConsumptionBtn.classList.toggle('btn-cyan', activeTab === 'waterConsumption');
-          showWaterConsumptionBtn.classList.toggle('btn-outline-light', activeTab !== 'waterConsumption');
-      }
-      if (activeTab === 'stats') initializeStats();
-      if (activeTab === 'waterConsumption') initializeWaterConsumption();
+            const showStatsBtn = document.getElementById('show-stats-btn');
+            if (showStatsBtn) {
+                showStatsBtn.classList.toggle('btn-cyan', activeTab === 'stats');
+                showStatsBtn.classList.toggle('btn-outline-light', activeTab !== 'stats');
+            }
+            if (activeTab === 'stats') initializeStats();
   };
 
     // Busca agendamentos no backend (exige adminToken)
@@ -575,13 +568,8 @@ export function init(appStore, bootstrapOverride) {
   logoutButton.addEventListener('click', () => switchView(null));
   document.getElementById('show-appointments-btn').addEventListener('click', () => renderAdminView('appointments'));
   document.getElementById('show-services-btn').addEventListener('click', () => renderAdminView('services'));
-  const showStatsBtn = document.getElementById('show-stats-btn');
-  if (showStatsBtn) showStatsBtn.addEventListener('click', () => renderAdminView('stats'));
-  const showWaterConsumptionBtn = document.getElementById('show-water-consumption-btn');
-  if (showWaterConsumptionBtn) showWaterConsumptionBtn.addEventListener('click', () => renderAdminView('waterConsumption'));
-  if (waterConsumptionRefresh) waterConsumptionRefresh.addEventListener('click', () => renderWaterConsumption());
-  if (waterConsumptionRange) waterConsumptionRange.addEventListener('change', () => renderWaterConsumption());
-  if (waterConsumptionDate) waterConsumptionDate.addEventListener('change', () => renderWaterConsumption());
+    const showStatsBtn = document.getElementById('show-stats-btn');
+    if (showStatsBtn) showStatsBtn.addEventListener('click', () => renderAdminView('stats'));
   datePicker.addEventListener('change', updateAvailableTimes);
   
   [serviceSelect, timeSelect].forEach(el => {
@@ -954,17 +942,6 @@ export function init(appStore, bootstrapOverride) {
     let statsUpdateQueue = Promise.resolve();
     let statsChart = null;
 
-    const waterConsumptionSection = document.getElementById('admin-water-consumption-section');
-    const waterConsumptionRange = document.getElementById('water-consumption-range');
-    const waterConsumptionDate = document.getElementById('water-consumption-date');
-    const waterConsumptionRefresh = document.getElementById('water-consumption-refresh');
-    const waterConsumptionChartEl = document.getElementById('water-consumption-chart');
-    const waterConsumptionSummary = document.getElementById('water-consumption-summary');
-    let waterConsumptionChart = null;
-    let waterConsumptionReady = false;
-
-    if (waterConsumptionDate) waterConsumptionDate.value = getTodayString();
-
     const parseRainProbability = (value) => {
         if (value === null || value === undefined) return null;
         if (typeof value === 'number') {
@@ -1035,134 +1012,14 @@ export function init(appStore, bootstrapOverride) {
         await renderStats();
     }
 
-    async function initializeWaterConsumption() {
-        if (typeof Chart === 'undefined') {
-            await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
-        }
-        waterConsumptionReady = true;
-        await renderWaterConsumption();
-    }
-
-    async function fetchWaterConsumptionData(start, end) {
-        if (!adminToken) return [];
-        const backend = getBackendBase();
-        const url = `${backend}/api/admin/water-consumption?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
-        try {
-            const res = await fetch(url, { headers: { Authorization: `Bearer ${adminToken}` } });
-            if (!res.ok) {
-                return [];
-            }
-            const data = await res.json();
-            if (!Array.isArray(data)) return [];
-            return data.map(item => ({
-                date: (item.date || '').toString().slice(0, 10),
-                volume: Number(item.volumeLiters || item.volume || 0)
-            })).filter(item => item.date && Number.isFinite(item.volume));
-        } catch (error) {
-            return [];
-        }
-    }
-
-    function getWaterConsumptionBounds(range, refDate) {
-        const d = new Date(refDate + 'T00:00:00');
-        if (range === 'day') return { start: refDate, end: refDate };
-        if (range === 'week') {
-            const day = d.getDay();
-            const diffToMon = (day + 6) % 7;
-            const monday = new Date(d);
-            monday.setDate(d.getDate() - diffToMon);
-            const sunday = new Date(monday);
-            sunday.setDate(monday.getDate() + 6);
-            return { start: monday.toISOString().slice(0, 10), end: sunday.toISOString().slice(0, 10) };
-        }
-        if (range === 'month') {
-            const year = d.getFullYear();
-            const month = d.getMonth();
-            const first = new Date(Date.UTC(year, month, 1));
-            const last = new Date(Date.UTC(year, month + 1, 0));
-            return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
-        }
-        return { start: refDate, end: refDate };
-    }
-
-    function generateSeries(start, end) {
-        const result = [];
-        const current = new Date(start + 'T00:00:00');
-        const last = new Date(end + 'T00:00:00');
-        while (current <= last) {
-            result.push(current.toISOString().slice(0, 10));
-            current.setDate(current.getDate() + 1);
-        }
-        return result;
-    }
-
-    function aggregateWaterConsumption(entries, range, refDate) {
-        const bounds = getWaterConsumptionBounds(range, refDate);
-        const series = generateSeries(bounds.start, bounds.end);
-        const byDate = new Map();
-        entries.forEach(item => {
-            if (!item.date) return;
-            byDate.set(item.date, (byDate.get(item.date) || 0) + item.volume);
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
         });
-        const labels = [];
-        const values = [];
-        if (range === 'week' || range === 'month') {
-            series.forEach(iso => {
-                labels.push(formatDatePtBr(iso));
-                values.push(Number(byDate.get(iso) || 0));
-            });
-        } else {
-            const label = formatDatePtBr(refDate);
-            labels.push(label);
-            values.push(Number(byDate.get(refDate) || 0));
-        }
-        return { labels, values, total: values.reduce((sum, v) => sum + v, 0) };
-    }
-
-    async function renderWaterConsumption() {
-        if (!waterConsumptionDate || !waterConsumptionRange || !waterConsumptionChartEl) return;
-        const refDate = waterConsumptionDate.value || getTodayString();
-        const range = waterConsumptionRange.value || 'month';
-        const bounds = getWaterConsumptionBounds(range, refDate);
-        const entries = await fetchWaterConsumptionData(bounds.start, bounds.end);
-        const aggregated = aggregateWaterConsumption(entries, range, refDate);
-
-        if (waterConsumptionChart) {
-            waterConsumptionChart.destroy();
-            waterConsumptionChart = null;
-        }
-
-        const ctx = waterConsumptionChartEl.getContext('2d');
-        waterConsumptionChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: aggregated.labels,
-                datasets: [{
-                    label: 'Litros de água',
-                    data: aggregated.values,
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    tooltip: { mode: 'index', intersect: false },
-                    legend: { position: 'top' }
-                },
-                scales: {
-                    x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
-                    y: { beginAtZero: true, title: { display: true, text: 'Litros' } }
-                }
-            }
-        });
-
-        if (waterConsumptionSummary) {
-            const periodName = range === 'day' ? 'dia' : range === 'week' ? 'semana' : 'mês';
-            waterConsumptionSummary.textContent = `Total de consumo para o ${periodName} selecionado: ${aggregated.total.toFixed(2)} litros (${entries.length} registro(s) carregado(s)).`;
-        }
     }
 
     // Resolve o CEP para latitude/longitude utilizando a API ViaCEP
@@ -2615,9 +2472,7 @@ export function init(appStore, bootstrapOverride) {
             const feedback = document.getElementById('admin-password-feedback');
             feedback.classList.add('d-none');
             const adminPasswordModalEl = document.getElementById('admin-password-modal');
-            const adminPasswordModal = (bootstrap.Modal.getOrCreateInstance)
-                ? bootstrap.Modal.getOrCreateInstance(adminPasswordModalEl)
-                : bootstrap.Modal.getInstance(adminPasswordModalEl) || new bootstrap.Modal(adminPasswordModalEl);
+            const adminPasswordModal = bootstrap.Modal.getInstance(adminPasswordModalEl);
 
             // Primeiro tenta autenticar no backend
             const backend = getBackendBase();

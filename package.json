@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "test:ui": "playwright test tests/ui.spec.js --project=chromium --timeout=20000",
     "test:ui:headed": "playwright test tests/ui.spec.js --project=chromium --headed --timeout=20000",
-    "test:e2e": "node ./scripts/run-e2e.mjs",
-    "seed:d1": "node ./scripts/seed_cloudflare_d1.mjs"
+    "test:e2e": "node ./scripts/run-e2e.mjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.3",
@@ -19,10 +18,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
-    "@types/node": "^22.14.0",
     "@vitejs/plugin-vue": "^5.1.3",
+    "@types/node": "^22.14.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "wrangler": "^4.84.1"
+    "vite": "^6.2.0"
   }
 }

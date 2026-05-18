@@ -10,8 +10,6 @@ O que este Worker faz
   - GET /api/appointments/:id/comprovante (admin)
   - POST /api/appointments/:id/confirm (admin)
   - DELETE /api/appointments/:id (admin)
-  - POST /api/water-consumption
-  - GET /api/admin/water-consumption?start=YYYY-MM-DD&end=YYYY-MM-DD (admin)
   - GET /api/visual-weather?lat=..&lon=..&start=..&end=..
   - GET /uploads/<key>
   - GET /health
@@ -30,22 +28,7 @@ cd .\cloudflare
 wrangler d1 migrations apply lava_rapido_db --local=false
 ```
 
-3) Popular D1 com dados sintéticos
-```powershell
-# Defina o token de API da Cloudflare antes de executar
-$env:CLOUDFLARE_API_TOKEN = '<seu_token_aqui>'
-cd ..
-npm run seed:d1
-```
-
-Ou diretamente com Wrangler:
-```powershell
-cd .\cloudflare
-$env:CLOUDFLARE_API_TOKEN = '<seu_token_aqui>'
-npx wrangler d1 execute lava_rapido_db --remote --file seed_appointments.sql -y
-```
-
-4) Definir secrets
+3) Definir secrets
 ```powershell
 wrangler secret put ADMIN_PASSWORD   # senha admin (texto simples)
 wrangler secret put JWT_SECRET       # string aleatória longa
