@@ -28,16 +28,36 @@
   <body>
     <div id="app"></div>
     <script>
-      // Load the currently built module with a cache-busting query string
-      (function(){
+      // Try loading a list of possible bundle names (helps clients with cached manifests)
+      (async function(){
         try{
-          const scriptName = '/LavaRapido/assets/index-lyPIW6Gm.js';
+          const candidates = [
+            'index-DtgCEqaA.js',
+            'index-Y8MFOx2a.js',
+            'index-CJ1pJUGm.js',
+            'index-lyPIW6Gm.js',
+            'index-fAASfzzn.js'
+          ];
+          const basePath = '/LavaRapido/assets/';
+          const fetchOptions = { method: 'HEAD', cache: 'no-store' };
+          let chosen = null;
+          for (const name of candidates) {
+            try {
+              const url = basePath + name + '?v=' + Date.now();
+              const res = await fetch(url, fetchOptions);
+              if (res && res.ok) { chosen = url; break; }
+            } catch (e) {
+              // ignore and try next
+            }
+          }
+          // Fallback to the most recent known bundle if none responded
+          if (!chosen) chosen = basePath + 'index-lyPIW6Gm.js' + '?v=' + Date.now();
           const s = document.createElement('script');
           s.type = 'module';
           s.crossOrigin = 'anonymous';
-          s.src = scriptName + '?v=' + Date.now();
+          s.src = chosen;
           document.body.appendChild(s);
-        }catch(e){ console.error('Failed to load app bundle', e); }
+        } catch(e) { console.error('Failed to load app bundle', e); }
       })();
     </script>
   </body>
