@@ -1,5 +1,4 @@
 {
-  "_comentario": "Este manifest relaciona os arquivos de entrada do Vite aos bundles usados em produção. Ele é sobrescrito automaticamente pelo script scripts/update-gh-pages-assets.mjs durante o build.",
   "index.html": {
     "file": "assets/index-SxSJHCoc.js",
     "name": "index",
@@ -17,5 +16,6 @@
     "css": [
       "assets/main-DCDpY7Jq.css"
     ]
-  }
+  },
+  "_comentario": "Este manifest relaciona os arquivos de entrada do Vite aos bundles usados em produção. Ele é sobrescrito automaticamente pelo script scripts/update-gh-pages-assets.mjs durante o build."
 }
