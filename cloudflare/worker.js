@@ -339,6 +339,17 @@ export default {
     }
 
     // Public ingestion endpoint: aceita POST com array de medições { date: YYYY-MM-DD, volume: number }
+    // Public read endpoint: consulta medições por intervalo (start,end) — não requer token
+    if (path === '/api/water-consumption' && request.method === 'GET') {
+      try {
+        const start = url.searchParams.get('start');
+        const end = url.searchParams.get('end');
+        if (!start || !end) return bad('start and end required', 400);
+        const rs = await env.DB.prepare(`SELECT date, volume_liters as liters FROM water_consumption WHERE date BETWEEN ? AND ? ORDER BY date ASC`).bind(start, end).all();
+        return ok(rs?.results || []);
+      } catch (e) { return bad('invalid query', 400); }
+    }
+
     if (path === '/api/water-consumption' && request.method === 'POST') {
       try {
         const body = await request.json();
