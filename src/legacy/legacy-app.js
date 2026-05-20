@@ -100,7 +100,9 @@ export function init(appStore, bootstrapOverride) {
     const waterConsumptionRefresh = document.getElementById('water-refresh');
     const waterConsumptionBackBtn = document.getElementById('water-back-btn');
     const waterChartEl = document.getElementById('water-chart');
+    const WATER_CONSUMPTION_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
     let waterChart = null;
+    let waterConsumptionRefreshTimer = null;
 
   // Elementos do Modal de Notificação do WhatsApp
   const whatsAppModalElement = document.getElementById('whatsapp-modal');
@@ -374,7 +376,12 @@ export function init(appStore, bootstrapOverride) {
             showWaterBtn.classList.toggle('btn-secondary', activeTab !== 'water');
         }
         if (activeTab === 'stats') initializeStats();
-        if (activeTab === 'water') renderWaterConsumption().catch(()=>{});
+        if (activeTab === 'water') {
+            renderWaterConsumption().catch(()=>{});
+            startWaterConsumptionAutoRefresh();
+        } else {
+            stopWaterConsumptionAutoRefresh();
+        }
   };
 
     // Busca agendamentos no backend (exige adminToken)
@@ -2680,7 +2687,28 @@ export function init(appStore, bootstrapOverride) {
                 }
             }
 
-            if (waterConsumptionRefresh) waterConsumptionRefresh.addEventListener('click', () => renderWaterConsumption().catch(()=>{}));
+            function stopWaterConsumptionAutoRefresh() {
+                if (!waterConsumptionRefreshTimer) return;
+                clearInterval(waterConsumptionRefreshTimer);
+                waterConsumptionRefreshTimer = null;
+            }
+
+            function startWaterConsumptionAutoRefresh() {
+                if (!waterChartEl) return;
+                stopWaterConsumptionAutoRefresh();
+                waterConsumptionRefreshTimer = setInterval(() => {
+                    if (waterConsumptionSection?.classList.contains('d-none')) {
+                        stopWaterConsumptionAutoRefresh();
+                        return;
+                    }
+                    renderWaterConsumption().catch(()=>{});
+                }, WATER_CONSUMPTION_REFRESH_INTERVAL_MS);
+            }
+
+            if (waterConsumptionRefresh) waterConsumptionRefresh.addEventListener('click', () => {
+                renderWaterConsumption().catch(()=>{});
+                startWaterConsumptionAutoRefresh();
+            });
             if (waterConsumptionBackBtn) waterConsumptionBackBtn.addEventListener('click', () => renderAdminView('appointments'));
 
             // Expor funções após todas as dependências estarem definidas
