@@ -2648,8 +2648,26 @@ export function init(appStore, bootstrapOverride) {
                     if (!waterChart) {
                         waterChart = new Chart(ctx, {
                             type: 'line',
-                            data: { labels, datasets: [{ label: 'Litros', data, borderColor: '#1e40af', backgroundColor: 'rgba(30,64,175,0.12)', fill: true }] },
-                            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                            data: { labels, datasets: [{ label: 'Litros', data, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.18)', fill: true }] },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                color: '#ffffff',
+                                plugins: {
+                                    legend: { labels: { color: '#ffffff' } }
+                                },
+                                scales: {
+                                    x: {
+                                        ticks: { color: '#ffffff' },
+                                        grid: { color: 'rgba(255,255,255,0.12)' }
+                                    },
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { color: '#ffffff' },
+                                        grid: { color: 'rgba(255,255,255,0.12)' }
+                                    }
+                                }
+                            }
                         });
                     } else {
                         waterChart.data.labels = labels;

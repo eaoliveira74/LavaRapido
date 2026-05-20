@@ -258,7 +258,7 @@
             <div class="mb-2">
               <canvas id="water-chart"></canvas>
             </div>
-            <div id="water-summary" class="small text-secondary"></div>
+            <div id="water-summary" class="small text-light"></div>
           </div>
         </div>
         </div>

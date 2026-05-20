@@ -11,6 +11,8 @@ O que este Worker faz
   - POST /api/appointments/:id/confirm (admin)
   - DELETE /api/appointments/:id (admin)
   - GET /api/visual-weather?lat=..&lon=..&start=..&end=..
+  - POST /api/water-consumption
+  - GET /api/water-consumption?start=YYYY-MM-DD&end=YYYY-MM-DD
   - GET /uploads/<key>
   - GET /health
 
@@ -52,3 +54,46 @@ CORS
 
 Limites
 - Uploads até 1 MB por arquivo (ajustável). Custos/limites do R2 e chamadas externas se aplicam.
+
+OpenWrt: envio de consumo baseado no trafego de internet
+- O script `scripts/openwrt_synthetic_water.sh` mede o trafego da interface WAN e envia para `POST /api/water-consumption`.
+- Conversao usada: 1 megabit trafegado = 1 litro.
+- A interface padrao configurada no script e `phy0-sta0`.
+- Ele foi escrito para OpenWrt/BusyBox `ash` e depende apenas de `curl`.
+- A primeira execucao apenas salva o contador inicial. A partir da segunda execucao, ele calcula o consumo desde a leitura anterior.
+- Para testar a partir deste ambiente Windows/PowerShell, use `scripts/create_synthetic_water_consumption.ps1`.
+
+Instalacao no roteador:
+```powershell
+scp .\scripts\openwrt_synthetic_water.sh root@192.168.1.1:/root/openwrt_synthetic_water.sh
+ssh root@192.168.1.1 "chmod +x /root/openwrt_synthetic_water.sh"
+```
+
+Teste manual:
+```sh
+DRY_RUN=1 /root/openwrt_synthetic_water.sh
+/root/openwrt_synthetic_water.sh
+```
+
+Teste pelo PowerShell local:
+```powershell
+$env:API_URL = "https://lava-rapido-proxy.<sua-conta>.workers.dev/api/water-consumption"
+.\scripts\create_synthetic_water_consumption.ps1 -DryRun
+.\scripts\create_synthetic_water_consumption.ps1
+```
+
+Forcar outra interface, se precisar:
+```sh
+IFACE=pppoe-wan /root/openwrt_synthetic_water.sh
+```
+
+Agendar uma leitura por hora no cron do OpenWrt:
+```sh
+echo '0 * * * * /root/openwrt_synthetic_water.sh >> /tmp/water.log 2>&1' >> /etc/crontabs/root
+/etc/init.d/cron restart
+```
+
+Consulta:
+```sh
+curl "https://lava-rapido-proxy.<sua-conta>.workers.dev/api/water-consumption?start=2026-05-01&end=2026-05-31"
+```
